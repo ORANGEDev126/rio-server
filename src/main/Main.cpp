@@ -71,22 +71,16 @@ void IOCPWorkerThread(HANDLE hPort)
 	}
 }
 
-int AddFunction(int a, int b)
+enum class TEST_ENUM
 {
-	int c = 20;
-
-	int d = a + b + c;
-
-	
-	return d;
-}
+	TEST_1,
+	TEST_2,
+	TEST_3
+};
 
 int main()
 {
-	int num = 10;
-	int num2 = 20;
-
-	int num3 = AddFunction(num, num2);
+	TEST_ENUM te = TEST_ENUM::TEST_1;
 
 	WSADATA wsaData;
 	WSAStartup(MAKEWORD(2, 2), &wsaData);
