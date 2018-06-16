@@ -1,4 +1,4 @@
-#include "main/stdafx.h"
+#include "stdafx.h"
 
 #include "RIOThreadContainer.h"
 #include "RIOSocket.h"
@@ -56,7 +56,8 @@ void RIOThreadContainer::StartThread()
 			WorkerThread(cq);
 		});
 		
-		Slots.emplace_back(thread, cq, 0);
+		ThreadSlot slot{ thread, cq, 0 };
+		Slots.push_back(slot);
 	}
 }
 

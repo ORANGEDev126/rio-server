@@ -1,5 +1,7 @@
 #pragma once
 
+struct RIOBuffer;
+
 class RIOSocket
 {
 public:

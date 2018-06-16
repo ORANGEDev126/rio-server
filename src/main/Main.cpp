@@ -1,14 +1,5 @@
 #include "stdafx.h"
 
-#include <string>
-#include <sstream>
-#include <optional>
-
-#include <Windows.h>
-
-#include <boost\thread\future.hpp>
-#include <boost\variant.hpp>
-
 RIO_EXTENSION_FUNCTION_TABLE g_RIO;
 
 void WorkerThread(RIO_CQ cq)
@@ -54,36 +45,13 @@ void IOCPWorkerThread(HANDLE hPort)
 	}
 }
 
-class MyClass
-{
-public:
-	template <typename T>
-	void PublicFunc(const T& my)
-	{
-		std::cout << "template function called" << std::endl;
-	}
-
-private:
-	int a = 10;
-};
-
-namespace {
-	struct Y
-	{
-
-	};
-}
-
-template <>
-void MyClass::PublicFunc<Y>(const Y& my)
-{
-	a = 20;
-}
-
 int main()
 {
 	WSADATA wsaData;
 	WSAStartup(MAKEWORD(2, 2), &wsaData);
+
+	int a = 10;
+	a += 20;
 
 	//HANDLE hPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
 	//std::thread IOCPThread([&hPort]()

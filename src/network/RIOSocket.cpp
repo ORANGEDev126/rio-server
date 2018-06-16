@@ -1,3 +1,8 @@
 #include "stdafx.h"
 
-#include "RIOSocker.h"
+#include "RIOSocket.h"
+
+void RIOSocket::OnIOCallBack(RIOBuffer* buffer, int transferred)
+{
+
+}
