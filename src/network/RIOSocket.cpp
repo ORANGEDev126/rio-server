@@ -1,3 +1,3 @@
-#include "main/stdafx.h"
+#include "stdafx.h"
 
 #include "RIOSocker.h"

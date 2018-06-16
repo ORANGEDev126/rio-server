@@ -1,22 +1,5 @@
-#define _CRT_SECURE_NO_WARNINGS
-#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#include "stdafx.h"
 
-#include <iostream>
-#include <future>
-#include <memory>
-#include <thread>
-#include <chrono>
-#include <mutex>
-#include <functional>
-#include <map>
-#include <unordered_map>
-#include <atomic>
-#include <regex>
-#include <type_traits>
-#include <array>
-#include <iomanip>
-#include <WinSock2.h>
-#include <MSWSock.h>
 #include <string>
 #include <sstream>
 #include <optional>
@@ -24,9 +7,9 @@
 #include <Windows.h>
 
 #include <boost\thread\future.hpp>
+#include <boost\variant.hpp>
 
 RIO_EXTENSION_FUNCTION_TABLE g_RIO;
-
 
 void WorkerThread(RIO_CQ cq)
 {
@@ -71,82 +54,100 @@ void IOCPWorkerThread(HANDLE hPort)
 	}
 }
 
-enum class TEST_ENUM
+class MyClass
 {
-	TEST_1,
-	TEST_2,
-	TEST_3
+public:
+	template <typename T>
+	void PublicFunc(const T& my)
+	{
+		std::cout << "template function called" << std::endl;
+	}
+
+private:
+	int a = 10;
 };
+
+namespace {
+	struct Y
+	{
+
+	};
+}
+
+template <>
+void MyClass::PublicFunc<Y>(const Y& my)
+{
+	a = 20;
+}
 
 int main()
 {
-	TEST_ENUM te = TEST_ENUM::TEST_1;
-
 	WSADATA wsaData;
 	WSAStartup(MAKEWORD(2, 2), &wsaData);
 
-	HANDLE hPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
-	std::thread IOCPThread([&hPort]()
-	{
-		IOCPWorkerThread(hPort);
-	});
+	//HANDLE hPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
+	//std::thread IOCPThread([&hPort]()
+	//{
+	//	IOCPWorkerThread(hPort);
+	//});
 
-	SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
+	//SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
 
-	sockaddr_in addr;
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(12000);
-	addr.sin_addr.s_addr = inet_addr("112.175.222.6");
+	//sockaddr_in addr;
+	//addr.sin_family = AF_INET;
+	//addr.sin_port = htons(12000);
+	//addr.sin_addr.s_addr = inet_addr("112.175.222.6");
 
-	if (connect(sock, (const sockaddr*)&addr, sizeof(addr)))
-	{
-		auto error = WSAGetLastError;
-		std::cout << "connect error " << error << std::endl;
-	}
+	//if (connect(sock, (const sockaddr*)&addr, sizeof(addr)))
+	//{
+	//	auto error = WSAGetLastError;
+	//	std::cout << "connect error " << error << std::endl;
+	//}
 
-	int bufferLength = 0;
-	setsockopt(sock, SOL_SOCKET, SO_SNDBUF, (const char*)&bufferLength, sizeof(int));
+	//int bufferLength = 0;
+	//setsockopt(sock, SOL_SOCKET, SO_SNDBUF, (const char*)&bufferLength, sizeof(int));
 
-	CreateIoCompletionPort((HANDLE)sock, hPort, NULL, 0);
+	//CreateIoCompletionPort((HANDLE)sock, hPort, NULL, 0);
 
-	std::stringstream ss;
-	int length = 32 * 1024 * 1024;
-	int protocol = 1;
+	//std::stringstream ss;
+	//int length = 32 * 1024 * 1024;
+	//int protocol = 1;
 
-	ss.write((char*)&length, sizeof(int));
-	ss.write((char*)&protocol, sizeof(int));
+	//ss.write((char*)&length, sizeof(int));
+	//ss.write((char*)&protocol, sizeof(int));
 
-	WSABUF wsaBuf;
-	wsaBuf.buf = (char*)ss.str().c_str();
-	wsaBuf.len = 10;
+	//WSABUF wsaBuf;
+	//wsaBuf.buf = (char*)ss.str().c_str();
+	//wsaBuf.len = 10;
 
-	OVERLAPPED overlapped = { 0, };
-	DWORD dwSent = 0;
-	DWORD dwRecv = 0;
-	DWORD dwFlag = 0;
-	
-	if (WSARecv(sock, &wsaBuf, 1, &dwRecv, &dwFlag, &overlapped, NULL))
-	{
-		auto error = WSAGetLastError();
-		std::cout << "recv error " << error << std::endl;
-	}
+	//OVERLAPPED overlapped = { 0, };
+	//DWORD dwSent = 0;
+	//DWORD dwRecv = 0;
+	//DWORD dwFlag = 0;
+	//
+	//if (WSARecv(sock, &wsaBuf, 1, &dwRecv, &dwFlag, &overlapped, NULL))
+	//{
+	//	auto error = WSAGetLastError();
+	//	std::cout << "recv error " << error << std::endl;
+	//}
 
-	for (;;)
-	{
-		if (WSASend(sock, &wsaBuf, 1, &dwSent, 0, &overlapped, NULL))
-		{
-			auto error = WSAGetLastError();
-			std::cout << "send error " << error << std::endl;
-		}
+	//for (;;)
+	//{
+	//	if (WSASend(sock, &wsaBuf, 1, &dwSent, 0, &overlapped, NULL))
+	//	{
+	//		auto error = WSAGetLastError();
+	//		std::cout << "send error " << error << std::endl;
+	//	}
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(20));
-	}
+	//	std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	//}
 
-	/*SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_REGISTERED_IO);
+	SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_REGISTERED_IO);
 	GUID tableID = WSAID_MULTIPLE_RIO;
 	DWORD dwBytes = 0;
 
-	if (WSAIoctl(sock, SIO_GET_MULTIPLE_EXTENSION_FUNCTION_POINTER, &tableID, sizeof(GUID), (void**)&g_RIO, sizeof(g_RIO), &dwBytes, 0, 0))
+	if (WSAIoctl(sock, SIO_GET_MULTIPLE_EXTENSION_FUNCTION_POINTER, 
+		&tableID, sizeof(GUID), (void**)&g_RIO, sizeof(g_RIO), &dwBytes, 0, 0))
 	{
 		auto error = WSAGetLastError();
 		std::cout << "wsaioctl error " << std::endl;
@@ -164,6 +165,8 @@ int main()
 		WorkerThread(cq);
 	});
 
+	SOCKET clientSock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_REGISTERED_IO);
+
 	sockaddr_in addr;
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(12000);
@@ -171,7 +174,7 @@ int main()
 
 	for (;;)
 	{
-		if (connect(sock, (const sockaddr*)&addr, sizeof(addr)))
+		if (connect(clientSock, (const sockaddr*)&addr, sizeof(addr)))
 		{
 			auto error = WSAGetLastError();
 			std::cout << "connect error " << error << std::endl;
@@ -181,7 +184,7 @@ int main()
 		break;
 	}
 
-	auto rq = g_RIO.RIOCreateRequestQueue(sock, 1, 1, 1, 1, cq, cq, 0);
+	auto rq = g_RIO.RIOCreateRequestQueue(clientSock, 1, 1, 1, 1, cq, cq, 0);
 	if (rq == RIO_INVALID_RQ)
 	{
 		auto error = WSAGetLastError();
@@ -209,7 +212,7 @@ int main()
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(50));
-	}*/
+	}
 
 	return 0;
 }
