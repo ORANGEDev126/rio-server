@@ -6,7 +6,7 @@ struct ThreadSlot
 {
 	std::shared_ptr<std::thread> Thread;
 	RIO_CQ RIOCQ;
-	std::atomic_int64_t BindedCount;
+	int64_t BindedCount;
 };
 
 class RIOThreadContainer

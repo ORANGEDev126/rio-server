@@ -68,6 +68,7 @@ void RIOThreadContainer::StopThread()
 	for (int i = 0; i < Slots.size(); ++i)
 	{
 		Slots[i].Thread->join();
+		g_RIO.RIOCloseCompletionQueue(Slots[i].RIOCQ);
 	}
 
 	Slots.clear();
@@ -95,7 +96,9 @@ RIO_RQ RIOThreadContainer::BindSocket(SOCKET sock, RIOSocket* socketContext)
 	{
 		auto error = WSAGetLastError();
 		std::cout << "create request error : " << error << std::endl;
+		return rq;
 	}
 
+	++Slots[minIndex].BindedCount;
 	return rq;
 }
