@@ -75,7 +75,7 @@ void RIOThreadContainer::StopThread()
 	Slots.clear();
 }
 
-RIO_RQ RIOThreadContainer::BindSocket(SOCKET sock, RIOSocket* socketContext)
+RIO_RQ RIOThreadContainer::BindSocket(RIOSocket* socket)
 {
 	std::lock_guard<std::mutex> lock(SlotMutex);
 	if (Slots.empty())
@@ -84,15 +84,11 @@ RIO_RQ RIOThreadContainer::BindSocket(SOCKET sock, RIOSocket* socketContext)
 		return RIO_INVALID_RQ;
 	}
 
-	int minIndex = 0;
-	for (int i = 0; i < Slots.size(); ++i)
-	{
-		if (Slots[i].BindedCount < Slots[minIndex].BindedCount)
-			minIndex = i;
-	}
+	SOCKET rawSocket = socket->GetRawSocket();
+	int slotIndex = static_cast<int>(rawSocket) % Slots.size();
 
-	auto rq = g_RIO.RIOCreateRequestQueue(sock, 1, 1, 1, 1,
-		Slots[minIndex].RIOCQ, Slots[minIndex].RIOCQ, socketContext);
+	auto rq = g_RIO.RIOCreateRequestQueue(rawSocket, 1, 1, 1, 1,
+		Slots[slotIndex].RIOCQ, Slots[slotIndex].RIOCQ, socket);
 	if (rq == RIO_INVALID_RQ)
 	{
 		auto error = WSAGetLastError();
@@ -100,6 +96,6 @@ RIO_RQ RIOThreadContainer::BindSocket(SOCKET sock, RIOSocket* socketContext)
 		return rq;
 	}
 
-	++Slots[minIndex].BindedCount;
+	++Slots[slotIndex].BindedCount;
 	return rq;
 }

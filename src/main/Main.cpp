@@ -45,13 +45,37 @@ void IOCPWorkerThread(HANDLE hPort)
 	}
 }
 
+class B
+{
+public:
+	B()
+	{
+		std::cout << "B constructor called" << std::endl;
+	}
+};
+
+class A : public B
+{
+public:
+	A(int a, double b)
+		: a(a), b(b)
+	{
+		std::cout << "cumstom constructor" << std::endl;
+	}
+
+private:
+	int a;
+	double b;
+
+	std::shared_ptr<std::vector<int>> mm;
+};
+
 int main()
 {
+	A* a = new A();
+
 	WSADATA wsaData;
 	WSAStartup(MAKEWORD(2, 2), &wsaData);
-
-	int a = 10;
-	a += 20;
 
 	//HANDLE hPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
 	//std::thread IOCPThread([&hPort]()
