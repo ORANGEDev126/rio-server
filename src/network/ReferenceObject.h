@@ -9,5 +9,5 @@ public:
 	void DecreaseRef();
 
 private:
-	std::atomic<int> Count;
+	std::atomic<int> Count{ 0 };
 };

@@ -9,6 +9,7 @@ public:
 
 	void AddSocket(RIOSocket* socket);
 	void DeleteSocket(RIOSocket* socket);
+	std::unordered_map<SOCKET, RIOSocket*> GetAll();
 
 private:
 	std::mutex ContainerMutex;
