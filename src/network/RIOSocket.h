@@ -8,7 +8,7 @@ class RIOServer;
 class RIOSocket : public ReferenceObject
 {
 public:
-	RIOSocket(SOCKET rawSock, const SOCKADDR_IN & addr);
+	RIOSocket(SOCKET rawSock, const SOCKADDR_IN& addr);
 	virtual ~RIOSocket() = default;
 
 	void Initialize(RIO_RQ requestQueue, RIOServer* server);

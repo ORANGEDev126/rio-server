@@ -29,14 +29,18 @@ void RIOServer::Run()
 	addr.sin_port = htons(GetPort());
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-	if (bind(listenSocket, reinterpret_cast<SOCKADDR*>(&addr), sizeof(addr) == SOCKET_ERROR))
+	if (bind(listenSocket, reinterpret_cast<SOCKADDR*>(&addr), sizeof(addr)) == SOCKET_ERROR)
 	{
 		auto error = WSAGetLastError();
 		std::cout << "bind socket error " << error << std::endl;
 		return;
 	}
 
-	AcceptLoop();
+	ThreadContainer.StartThread();
+	AcceptThread = std::make_unique<std::thread>([this]()
+	{
+		AcceptLoop();
+	});
 }
 
 void RIOServer::Stop()
@@ -45,12 +49,13 @@ void RIOServer::Stop()
 	closesocket(listenSocket);
 
 	for (auto& socket : SocketContainer.GetAll())
-		socket.second->Close();
+		socket->Close();
+
+	AcceptThread->join();
 }
 
 void RIOServer::DeleteSocket(RIOSocket* sock)
 {
-	ThreadContainer.UnbindSocket(sock);
 	SocketContainer.DeleteSocket(sock);
 }
 
@@ -86,7 +91,7 @@ void RIOServer::AcceptLoop()
 		auto* socket = CreateSocket(acceptedSock, addr);
 		if (socket)
 		{
-			auto rq = ThreadContainer.BindSocket(socket);
+			auto rq = ThreadContainer.BindSocket(acceptedSock, socket);
 			if (rq)
 			{
 				SocketContainer.AddSocket(socket);

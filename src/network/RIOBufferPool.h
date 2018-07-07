@@ -1,6 +1,6 @@
 #pragma once
 
-class RIOBuffer;
+struct RIOBuffer;
 
 class RIOBufferPool
 {
@@ -35,6 +35,6 @@ private:
 	std::atomic_int64_t FreeIndex;
 };
 
-#define g_RIOBufferPool RIOBufferPool::GetInstance();
+#define g_RIOBufferPool RIOBufferPool::GetInstance()
 #define GRANULARITY 65536
 #define BUFFER_SIZE 8192

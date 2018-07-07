@@ -9,9 +9,9 @@ public:
 
 	void AddSocket(RIOSocket* socket);
 	void DeleteSocket(RIOSocket* socket);
-	std::unordered_map<SOCKET, RIOSocket*> GetAll();
+	std::set<RIOSocket*> GetAll();
 
 private:
 	std::mutex ContainerMutex;
-	std::unordered_map<SOCKET, RIOSocket*> Sockets;
+	std::set<RIOSocket*> Sockets;
 };

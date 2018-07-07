@@ -1,12 +1,12 @@
 #include "stdafx.h"
 #include "ReferenceObject.h"
 
-void ReferenceObject::IncreaseRef()
+void ReferenceObject::IncRef()
 {
 	Count.fetch_add(1);
 }
 
-void ReferenceObject::DecreaseRef()
+void ReferenceObject::DecRef()
 {
 	if (Count.fetch_sub(1) - 1 == 0)
 		delete this;

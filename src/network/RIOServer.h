@@ -20,6 +20,7 @@ private:
 
 	SOCKET listenSocket;
 	bool StopFlag;
+	std::unique_ptr<std::thread> AcceptThread;
 	RIOThreadContainer ThreadContainer;
 	RIOSocketContainer SocketContainer;
 };

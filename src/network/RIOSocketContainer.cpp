@@ -9,33 +9,30 @@ RIOSocketContainer::~RIOSocketContainer()
 	lock.unlock();
 
 	for (auto& socket : temp)
-		socket.second->DecreaseRef();
+		socket->DecRef();
 }
 
 void RIOSocketContainer::AddSocket(RIOSocket* socket)
 {
-	auto rawSocket = socket->GetRawSocket();
-	socket->IncreaseRef();
+	socket->IncRef();
 
 	std::lock_guard<std::mutex> lock(ContainerMutex);
-	Sockets.insert(std::make_pair(rawSocket, socket));
+	Sockets.insert(socket);
 }
 
 void RIOSocketContainer::DeleteSocket(RIOSocket* socket)
 {
-	auto rawSocket = socket->GetRawSocket();
-
 	std::lock_guard<std::mutex> lock(ContainerMutex);
-	auto iter = Sockets.find(rawSocket);
+	auto iter = Sockets.find(socket);
 	if (iter != Sockets.end())
 	{
-		auto* socket = iter->second;
+		auto* socket = *iter;
 		Sockets.erase(iter);
-		socket->DecreaseRef();
+		socket->DecRef();
 	}
 }
 
-std::unordered_map<SOCKET, RIOSocket*> RIOSocketContainer::GetAll()
+std::set<RIOSocket*> RIOSocketContainer::GetAll()
 {
 	std::lock_guard<std::mutex> lock(ContainerMutex);
 	return Sockets;

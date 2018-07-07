@@ -3,10 +3,11 @@
 class ReferenceObject
 {
 public:
-	virtual ~ReferenceObject() = default;
+	void IncRef();
+	void DecRef();
 
-	void IncreaseRef();
-	void DecreaseRef();
+protected:
+	~ReferenceObject() = default;
 
 private:
 	std::atomic<int> Count{ 0 };

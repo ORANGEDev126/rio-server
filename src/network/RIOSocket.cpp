@@ -2,6 +2,7 @@
 #include "RIOSocket.h"
 #include "RIOServer.h"
 #include "RIOBuffer.h"
+#include "RIOBufferPool.h"
 
 RIOSocket::RIOSocket(SOCKET rawSock, const SOCKADDR_IN& addr)
 	: RawSocket(rawSock)
@@ -26,7 +27,6 @@ void RIOSocket::OnIOCallBack(int status, RIOBuffer* buffer, int transferred)
 	{
 		auto error = WSAGetLastError();
 		std::cout << "dequeue completion status error status : " << status << "error : " << error << std::endl;
-		Close();
 	}
 
 	if (!transferred)
@@ -37,17 +37,20 @@ void RIOSocket::OnIOCallBack(int status, RIOBuffer* buffer, int transferred)
 	else if (buffer->Type == RequestType::RIO_WRITE)
 		OnWrite(buffer, transferred);
 
-	DecreaseRef();
+	DecRef();
+	g_RIOBufferPool->FreeBuffer(buffer);
 }
 
 void RIOSocket::Read(RIOBuffer* buffer)
 {
 	buffer->Type = RequestType::RIO_READ;
+	IncRef();
 
 	if (!g_RIO.RIOReceive(RequestQueue, static_cast<RIO_BUF*>(buffer), 1, 0, buffer))
 	{
 		auto error = WSAGetLastError();
 		std::cout << "RIO receive error " << error << std::endl;
+		DecRef();
 		Close();
 		return;
 	}
@@ -56,11 +59,13 @@ void RIOSocket::Read(RIOBuffer* buffer)
 void RIOSocket::Write(RIOBuffer* buffer)
 {
 	buffer->Type = RequestType::RIO_WRITE;
+	IncRef();
 
 	if (!g_RIO.RIOSend(RequestQueue, static_cast<RIO_BUF*>(buffer), 1, 0, buffer))
 	{
 		auto error = WSAGetLastError();
 		std::cout << "RIO send error " << error << std::endl;
+		DecRef();
 		Close();
 		return;
 	}

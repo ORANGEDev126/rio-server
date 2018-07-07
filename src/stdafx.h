@@ -14,6 +14,9 @@
 #include <mutex>
 #include <atomic>
 #include <iostream>
+#include <set>
+#include <list>
+#include <map>
 
 #include <boost\thread\future.hpp>
 

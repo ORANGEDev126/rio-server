@@ -8,7 +8,6 @@ RIOThreadContainer::RIOThreadContainer(int threadCount)
 	: ThreadCount(threadCount)
 	, StopFlag(false)
 {
-	StartThread();
 }
 
 RIOThreadContainer::~RIOThreadContainer()
@@ -46,6 +45,13 @@ void RIOThreadContainer::StartThread()
 	for (int i = 0; i < ThreadCount; ++i)
 	{
 		auto cq = g_RIO.RIOCreateCompletionQueue(256, NULL);
+		if (cq == RIO_INVALID_CQ)
+		{
+			auto error = WSAGetLastError();
+			std::cout << "invalid completion queue " << error << std::endl;
+			continue;
+		}
+
 		auto thread = std::make_shared<std::thread>([this, &cq]()
 		{
 			WorkerThread(cq);
@@ -70,7 +76,7 @@ void RIOThreadContainer::StopThread()
 	Slots.clear();
 }
 
-RIO_RQ RIOThreadContainer::BindSocket(RIOSocket* socket)
+RIO_RQ RIOThreadContainer::BindSocket(SOCKET rawSock, RIOSocket* socket)
 {
 	std::lock_guard<std::mutex> lock(SlotMutex);
 	if (Slots.empty())
@@ -79,10 +85,9 @@ RIO_RQ RIOThreadContainer::BindSocket(RIOSocket* socket)
 		return RIO_INVALID_RQ;
 	}
 
-	auto rawSocket = socket->GetRawSocket();
-	int slotIndex = static_cast<int>(rawSocket) % Slots.size();
+	int slotIndex = static_cast<int>(rawSock) % Slots.size();
 
-	auto rq = g_RIO.RIOCreateRequestQueue(rawSocket, 1, 1, 1, 1,
+	auto rq = g_RIO.RIOCreateRequestQueue(rawSock, 1, 1, 1, 1,
 		Slots[slotIndex].RIOCQ, Slots[slotIndex].RIOCQ, socket);
 	if (rq == RIO_INVALID_RQ)
 	{
@@ -93,16 +98,4 @@ RIO_RQ RIOThreadContainer::BindSocket(RIOSocket* socket)
 
 	++Slots[slotIndex].BindedCount;
 	return rq;
-}
-
-void RIOThreadContainer::UnbindSocket(RIOSocket* socket)
-{
-	auto rawSocket = socket->GetRawSocket();
-
-	std::lock_guard<std::mutex> lock(SlotMutex);
-	if (Slots.empty())
-		return;
-
-	int slotIndex = static_cast<int>(rawSocket) % Slots.size();
-	--Slots[slotIndex].BindedCount;
 }
