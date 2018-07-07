@@ -34,3 +34,9 @@ void RIOSocketContainer::DeleteSocket(RIOSocket* socket)
 		socket->DecreaseRef();
 	}
 }
+
+std::unordered_map<SOCKET, RIOSocket*> RIOSocketContainer::GetAll()
+{
+	std::lock_guard<std::mutex> lock(ContainerMutex);
+	return Sockets;
+}

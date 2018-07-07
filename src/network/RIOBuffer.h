@@ -3,7 +3,7 @@
 enum class RequestType
 {
 	RIO_READ,
-	RIO_Write
+	RIO_WRITE
 };
 
 struct RIOBuffer : public RIO_BUF

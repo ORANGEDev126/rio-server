@@ -2,6 +2,9 @@
 #include "RIOBufferPool.h"
 #include "RIOBuffer.h"
 
+RIOBufferPool* RIOBufferPool::Instance = nullptr;
+std::mutex RIOBufferPool::InstMutex;
+
 RIOBufferPool* RIOBufferPool::GetInstance()
 {
 	if (!Instance)
@@ -17,8 +20,8 @@ RIOBufferPool* RIOBufferPool::GetInstance()
 RIOBufferPool::RIOBufferPool()
 	: AllocIndex(0)
 	, FreeIndex(0)
+	, SlotList(16)
 {
-	SlotList.resize(16);
 }
 
 RIOBuffer* RIOBufferPool::AllocBuffer()
@@ -59,11 +62,11 @@ RIOBuffer* RIOBufferPool::Slot::Alloc()
 
 void RIOBufferPool::Slot::Free(RIOBuffer* buffer)
 {
-	std::lock_guard<std::mutex> lock(ListMutex);
 	buffer->Length = 0;
 	buffer->Offset = 0;
 	buffer->Size = 0;
 
+	std::lock_guard<std::mutex> lock(ListMutex);
 	BufferList.push_back(buffer);
 }
 

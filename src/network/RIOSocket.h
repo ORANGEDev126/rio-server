@@ -19,10 +19,10 @@ public:
 	SOCKET GetRawSocket() const;
 
 private:
-	virtual void OnRead(RIOBuffer* buffer);
-	virtual void OnWrite(RIOBuffer* buffer);
-	virtual void OnConnected();
-	virtual void OnClose();
+	virtual void OnRead(RIOBuffer* buffer, int transferred) = 0;
+	virtual void OnWrite(RIOBuffer* buffer, int transferred) = 0;
+	virtual void OnConnected() = 0;
+	virtual void OnClose() = 0;
 
 	std::atomic<SOCKET> RawSocket;
 	SOCKADDR_IN Addr;
