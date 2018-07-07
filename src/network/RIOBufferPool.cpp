@@ -64,7 +64,6 @@ void RIOBufferPool::Slot::Free(RIOBuffer* buffer)
 {
 	buffer->Length = 0;
 	buffer->Offset = 0;
-	buffer->Size = 0;
 
 	std::lock_guard<std::mutex> lock(ListMutex);
 	BufferList.push_back(buffer);
@@ -92,7 +91,6 @@ std::list<RIOBuffer*> RIOBufferPool::Slot::NewAlloc()
 		buffer->Length = 0;
 		buffer->Offset = 0;
 		buffer->RawBuf = base;
-		buffer->Size = 0;
 
 		list.push_back(buffer);
 	}

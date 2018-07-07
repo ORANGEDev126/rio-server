@@ -13,7 +13,7 @@ public:
 
 	void Initialize(RIO_RQ requestQueue, RIOServer* server);
 	void OnIOCallBack(int status, RIOBuffer* buffer, int transferred);
-	void Read(RIOBuffer* buffer);
+	void Read();
 	void Write(RIOBuffer* buffer);
 	void Close();
 	SOCKET GetRawSocket() const;

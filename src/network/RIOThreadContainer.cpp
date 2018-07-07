@@ -21,7 +21,7 @@ void RIOThreadContainer::WorkerThread(RIO_CQ cq)
 
 	while (!StopFlag)
 	{
-		auto size = g_RIO.RIODequeueCompletion(cq, result, 256);
+		int size = g_RIO.RIODequeueCompletion(cq, result, 256);
 
 		for (int i = 0; i < size; ++i)
 		{

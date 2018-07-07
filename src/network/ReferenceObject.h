@@ -7,7 +7,7 @@ public:
 	void DecRef();
 
 protected:
-	~ReferenceObject() = default;
+	virtual ~ReferenceObject() = default;
 
 private:
 	std::atomic<int> Count{ 0 };

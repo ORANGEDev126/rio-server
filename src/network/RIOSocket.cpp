@@ -23,27 +23,28 @@ void RIOSocket::Initialize(RIO_RQ requestQueue, RIOServer* server)
 
 void RIOSocket::OnIOCallBack(int status, RIOBuffer* buffer, int transferred)
 {
-	if (status)
+	if (status || !transferred)
 	{
-		auto error = WSAGetLastError();
-		std::cout << "dequeue completion status error status : " << status << "error : " << error << std::endl;
+		Close();
+	}
+	else
+	{
+		if (buffer->Type == RequestType::RIO_READ)
+			OnRead(buffer, transferred);
+		else if (buffer->Type == RequestType::RIO_WRITE)
+			OnWrite(buffer, transferred);
 	}
 
-	if (!transferred)
-		Close();
-
-	if (buffer->Type == RequestType::RIO_READ)
-		OnRead(buffer, transferred);
-	else if (buffer->Type == RequestType::RIO_WRITE)
-		OnWrite(buffer, transferred);
-
-	DecRef();
 	g_RIOBufferPool->FreeBuffer(buffer);
+	DecRef();
 }
 
-void RIOSocket::Read(RIOBuffer* buffer)
+void RIOSocket::Read()
 {
+	auto* buffer = g_RIOBufferPool->AllocBuffer();
 	buffer->Type = RequestType::RIO_READ;
+	buffer->Length = BUFFER_SIZE;
+
 	IncRef();
 
 	if (!g_RIO.RIOReceive(RequestQueue, static_cast<RIO_BUF*>(buffer), 1, 0, buffer))

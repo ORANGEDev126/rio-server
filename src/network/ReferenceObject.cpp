@@ -9,5 +9,8 @@ void ReferenceObject::IncRef()
 void ReferenceObject::DecRef()
 {
 	if (Count.fetch_sub(1) - 1 == 0)
+	{
+		std::cout << "delete object" << std::endl;
 		delete this;
+	}
 }

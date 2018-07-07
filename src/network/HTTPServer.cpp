@@ -9,6 +9,7 @@ HTTPServer::HTTPServer(int threadCount)
 
 RIOSocket* HTTPServer::CreateSocket(SOCKET rawSocket, const SOCKADDR_IN& addr)
 {
+	std::cout << "new socket" << std::endl;
 	return new HTTPSocket(rawSocket, addr);
 }
 

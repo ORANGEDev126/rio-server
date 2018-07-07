@@ -69,6 +69,7 @@ void RIOServer::AcceptLoop()
 	}
 
 	StopFlag = false;
+	std::cout << "start server port : " << GetPort() << std::endl;
 
 	for (;;)
 	{
