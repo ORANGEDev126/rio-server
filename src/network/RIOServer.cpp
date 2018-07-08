@@ -20,7 +20,7 @@ void RIOServer::Run()
 	if (listenSocket == INVALID_SOCKET)
 	{
 		auto error = WSAGetLastError();
-		std::cout << "create listen socket error " << error << std::endl;
+		PrintConsole(std::string("create listen socket error ") + std::to_string(error));
 		return;
 	}
 
@@ -32,7 +32,7 @@ void RIOServer::Run()
 	if (bind(listenSocket, reinterpret_cast<SOCKADDR*>(&addr), sizeof(addr)) == SOCKET_ERROR)
 	{
 		auto error = WSAGetLastError();
-		std::cout << "bind socket error " << error << std::endl;
+		PrintConsole(std::string("bind socket error ") + std::to_string(error));
 		return;
 	}
 
@@ -64,12 +64,12 @@ void RIOServer::AcceptLoop()
 	if (listen(listenSocket, SOMAXCONN) == SOCKET_ERROR)
 	{
 		auto error = WSAGetLastError();
-		std::cout << "listen error " << error << std::endl;
+		PrintConsole(std::string("listen error ") + std::to_string(error));
 		return;
 	}
 
 	StopFlag = false;
-	std::cout << "start server port : " << GetPort() << std::endl;
+	PrintConsole(std::string("start server port : ") + std::to_string(GetPort()));
 
 	for (;;)
 	{
@@ -81,7 +81,7 @@ void RIOServer::AcceptLoop()
 		if (acceptedSock == INVALID_SOCKET)
 		{
 			auto error = WSAGetLastError();
-			std::cout << "invalid accepted socket " << error << std::endl;
+			PrintConsole(std::string("invalid accepted socket ") + std::to_string(error));
 			continue;
 		}
 

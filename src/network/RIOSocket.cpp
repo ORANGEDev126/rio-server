@@ -50,7 +50,7 @@ void RIOSocket::Read()
 	if (!g_RIO.RIOReceive(RequestQueue, static_cast<RIO_BUF*>(buffer), 1, 0, buffer))
 	{
 		auto error = WSAGetLastError();
-		std::cout << "RIO receive error " << error << std::endl;
+		PrintConsole(std::string("RIO receive error ") + std::to_string(error));
 		DecRef();
 		Close();
 		return;
@@ -65,7 +65,7 @@ void RIOSocket::Write(RIOBuffer* buffer)
 	if (!g_RIO.RIOSend(RequestQueue, static_cast<RIO_BUF*>(buffer), 1, 0, buffer))
 	{
 		auto error = WSAGetLastError();
-		std::cout << "RIO send error " << error << std::endl;
+		PrintConsole(std::string("RIO send error ") + std::to_string(error));
 		DecRef();
 		Close();
 		return;

@@ -10,7 +10,7 @@ HTTPSocket::HTTPSocket(SOCKET rawSocket, const SOCKADDR_IN& addr)
 
 void HTTPSocket::OnRead(RIOBuffer* buffer, int transferred)
 {
-	std::cout << buffer->RawBuf << std::endl;
+	PrintConsole(buffer->RawBuf);
 	Read();
 }
 
@@ -21,11 +21,11 @@ void HTTPSocket::OnWrite(RIOBuffer* buffer, int transferred)
 
 void HTTPSocket::OnConnected()
 {
-	std::cout << "connected http socket" << std::endl;
+	PrintConsole("connected http socket");
 	Read();
 }
 
 void HTTPSocket::OnClose()
 {
-	std::cout << "close http socket" << std::endl;
+	PrintConsole("close http socket");
 }

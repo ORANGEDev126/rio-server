@@ -44,16 +44,13 @@ RIOBuffer* RIOBufferPool::Slot::Alloc()
 	if (BufferList.empty())
 	{
 		auto newList = NewAlloc();
-		if (!newList.empty())
-		{
-			buffer = newList.front();
-			newList.pop_front();
-			BufferList.insert(std::end(BufferList), std::begin(newList), std::end(newList));
-		}
+		BufferList.insert(std::end(BufferList), std::begin(newList), std::end(newList));
+		buffer = BufferList.front();
+		BufferList.pop_front();
 	}
 	else
 	{
-		auto* buffer = BufferList.front();
+		buffer = BufferList.front();
 		BufferList.pop_front();	
 	}
 
@@ -77,7 +74,7 @@ std::list<RIOBuffer*> RIOBufferPool::Slot::NewAlloc()
 	if (!base)
 	{
 		auto error = GetLastError();
-		std::cout << "virtual alloc return nullptr : " << error << std::endl;
+		PrintConsole(std::string("virtual alloc return nullptr : ") + std::to_string(error));
 		return {};
 	}
 

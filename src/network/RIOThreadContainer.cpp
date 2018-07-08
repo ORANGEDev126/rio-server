@@ -48,11 +48,11 @@ void RIOThreadContainer::StartThread()
 		if (cq == RIO_INVALID_CQ)
 		{
 			auto error = WSAGetLastError();
-			std::cout << "invalid completion queue " << error << std::endl;
+			PrintConsole(std::string("invalid completion queue ") + std::to_string(error));
 			continue;
 		}
 
-		auto thread = std::make_shared<std::thread>([this, &cq]()
+		auto thread = std::make_shared<std::thread>([this, cq]()
 		{
 			WorkerThread(cq);
 		});
@@ -81,7 +81,7 @@ RIO_RQ RIOThreadContainer::BindSocket(SOCKET rawSock, RIOSocket* socket)
 	std::lock_guard<std::mutex> lock(SlotMutex);
 	if (Slots.empty())
 	{
-		std::cout << "bind socket error slots empty" << std::endl;
+		PrintConsole("bind socket error slots empty");
 		return RIO_INVALID_RQ;
 	}
 
@@ -92,7 +92,7 @@ RIO_RQ RIOThreadContainer::BindSocket(SOCKET rawSock, RIOSocket* socket)
 	if (rq == RIO_INVALID_RQ)
 	{
 		auto error = WSAGetLastError();
-		std::cout << "create request error : " << error << std::endl;
+		PrintConsole(std::string("create request error : ") + std::to_string(error));
 		return rq;
 	}
 

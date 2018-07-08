@@ -8,7 +8,7 @@ int main()
 
 	SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_REGISTERED_IO);
 	if (sock == INVALID_SOCKET)
-		std::cout << "invalid socket" << std::endl;
+		PrintConsole("invalid socket");
 	
 	GUID funcTableID = WSAID_MULTIPLE_RIO;
 	DWORD dwBytes = 0;
@@ -19,10 +19,10 @@ int main()
 		NULL))
 	{
 		auto error = WSAGetLastError();
-		std::cout << "get extension function table fail " << error << std::endl;
+		PrintConsole(std::string("get extension function table fail ") + std::to_string(error));
 	}
 
-	HTTPServer hs(std::thread::hardware_concurrency());
+	HTTPServer hs(std::thread::hardware_concurrency() * 2);
 	hs.Run();
 
 	std::this_thread::sleep_for(std::chrono::hours(24));
