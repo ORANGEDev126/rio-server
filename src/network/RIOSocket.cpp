@@ -51,6 +51,8 @@ void RIOSocket::Read()
 	{
 		auto error = WSAGetLastError();
 		PrintConsole(std::string("RIO receive error ") + std::to_string(error));
+
+		g_RIOBufferPool->FreeBuffer(buffer);
 		DecRef();
 		Close();
 		return;
@@ -66,6 +68,8 @@ void RIOSocket::Write(RIOBuffer* buffer)
 	{
 		auto error = WSAGetLastError();
 		PrintConsole(std::string("RIO send error ") + std::to_string(error));
+
+		g_RIOBufferPool->FreeBuffer(buffer);
 		DecRef();
 		Close();
 		return;
