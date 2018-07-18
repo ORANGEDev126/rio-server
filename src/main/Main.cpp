@@ -22,7 +22,7 @@ int main()
 		PrintConsole(std::string("get extension function table fail ") + std::to_string(error));
 	}
 
-	HTTPServer hs(std::thread::hardware_concurrency() * 2);
+	network::HTTPServer hs(std::thread::hardware_concurrency() * 2);
 	hs.Run();
 
 	std::this_thread::sleep_for(std::chrono::hours(24));

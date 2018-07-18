@@ -2,6 +2,8 @@
 
 #include "RIOSocket.h"
 
+namespace network
+{
 class HTTPSocket : public RIOSocket
 {
 public:
@@ -13,3 +15,4 @@ private:
 	virtual void OnConnected() override;
 	virtual void OnClose() override;
 };
+}

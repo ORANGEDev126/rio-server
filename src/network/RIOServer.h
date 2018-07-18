@@ -3,6 +3,8 @@
 #include "RIOThreadContainer.h"
 #include "RIOSocketContainer.h"
 
+namespace network
+{
 class RIOServer
 {
 public:
@@ -24,3 +26,4 @@ private:
 	RIOThreadContainer ThreadContainer;
 	RIOSocketContainer SocketContainer;
 };
+}

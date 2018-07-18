@@ -1,7 +1,9 @@
 #pragma once
 
-struct RIOBuffer;
+namespace network { struct RIOBuffer; }
 
+namespace network
+{
 class RIOBufferPool
 {
 public:
@@ -10,7 +12,7 @@ public:
 	class Slot
 	{
 	public:
-		RIOBuffer* Alloc();
+		RIOBuffer * Alloc();
 		void Free(RIOBuffer* buffer);
 
 	private:
@@ -34,6 +36,7 @@ private:
 	std::atomic_int64_t AllocIndex;
 	std::atomic_int64_t FreeIndex;
 };
+}
 
 #define g_RIOBufferPool RIOBufferPool::GetInstance()
 #define GRANULARITY 65536

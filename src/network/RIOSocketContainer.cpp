@@ -2,6 +2,8 @@
 #include "RIOSocketContainer.h"
 #include "RIOSocket.h"
 
+namespace network
+{
 RIOSocketContainer::~RIOSocketContainer()
 {
 	std::unique_lock<std::mutex> lock(ContainerMutex);
@@ -36,4 +38,5 @@ std::set<RIOSocket*> RIOSocketContainer::GetAll()
 {
 	std::lock_guard<std::mutex> lock(ContainerMutex);
 	return Sockets;
+}
 }

@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "ReferenceObject.h"
 
+namespace network
+{
 void ReferenceObject::IncRef()
 {
 	Count.fetch_add(1);
@@ -13,4 +15,5 @@ void ReferenceObject::DecRef()
 		PrintConsole("delete object");
 		delete this;
 	}
+}
 }

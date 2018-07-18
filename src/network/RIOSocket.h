@@ -2,9 +2,12 @@
 
 #include "ReferenceObject.h"
 
-struct RIOBuffer;
-class RIOServer;
+namespace network { struct RIOBuffer; }
+namespace network { class RIOServer; }
+namespace network { class RIOBuffer; }
 
+namespace network
+{
 class RIOSocket : public ReferenceObject
 {
 public:
@@ -27,5 +30,7 @@ private:
 	std::atomic<SOCKET> RawSocket;
 	SOCKADDR_IN Addr;
 	RIO_RQ RequestQueue;
+	RIOBuffer* ReadBuffer;
 	RIOServer* Server;
 };
+}

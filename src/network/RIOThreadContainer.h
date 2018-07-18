@@ -1,7 +1,9 @@
 #pragma once
 
-class RIOSocket;
+namespace network { class RIOSocket; }
 
+namespace network
+{
 struct ThreadSlot
 {
 	std::shared_ptr<std::thread> Thread;
@@ -26,3 +28,4 @@ private:
 	int ThreadCount;
 	volatile bool StopFlag;
 };
+}

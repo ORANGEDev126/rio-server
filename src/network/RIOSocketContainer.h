@@ -1,7 +1,9 @@
 #pragma once
 
-class RIOSocket;
+namespace network { class RIOSocket; }
 
+namespace network
+{
 class RIOSocketContainer
 {
 public:
@@ -15,3 +17,4 @@ private:
 	std::mutex ContainerMutex;
 	std::set<RIOSocket*> Sockets;
 };
+}

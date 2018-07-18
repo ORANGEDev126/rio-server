@@ -1,5 +1,7 @@
 #pragma once
 
+namespace network
+{
 enum class RequestType
 {
 	RIO_READ,
@@ -11,3 +13,4 @@ struct RIOBuffer : public RIO_BUF
 	char* RawBuf = nullptr;
 	RequestType Type;
 };
+}

@@ -4,6 +4,8 @@
 #include "RIOSocket.h"
 #include "RIOBuffer.h"
 
+namespace network
+{
 RIOThreadContainer::RIOThreadContainer(int threadCount)
 	: ThreadCount(threadCount)
 	, StopFlag(false)
@@ -26,7 +28,7 @@ void RIOThreadContainer::WorkerThread(RIO_CQ cq)
 		for (int i = 0; i < size; ++i)
 		{
 			auto status = result[i].Status;
-			auto transferred =(result[i].BytesTransferred);
+			auto transferred = (result[i].BytesTransferred);
 			auto socketContext = reinterpret_cast<RIOSocket*>(result[i].SocketContext);
 			auto requestContext = reinterpret_cast<RIOBuffer*>(result[i].RequestContext);
 
@@ -56,7 +58,7 @@ void RIOThreadContainer::StartThread()
 		{
 			WorkerThread(cq);
 		});
-		
+
 		ThreadSlot slot{ thread, cq, 0 };
 		Slots.push_back(slot);
 	}
@@ -98,4 +100,5 @@ RIO_RQ RIOThreadContainer::BindSocket(SOCKET rawSock, RIOSocket* socket)
 
 	++Slots[slotIndex].BindedCount;
 	return rq;
+}
 }

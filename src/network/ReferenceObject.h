@@ -1,5 +1,7 @@
 #pragma once
 
+namespace network
+{
 class ReferenceObject
 {
 public:
@@ -12,3 +14,4 @@ protected:
 private:
 	std::atomic<int> Count{ 0 };
 };
+}

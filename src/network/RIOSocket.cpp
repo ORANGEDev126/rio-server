@@ -4,6 +4,8 @@
 #include "RIOBuffer.h"
 #include "RIOBufferPool.h"
 
+namespace network
+{
 RIOSocket::RIOSocket(SOCKET rawSock, const SOCKADDR_IN& addr)
 	: RawSocket(rawSock)
 	, Addr(addr)
@@ -90,4 +92,5 @@ void RIOSocket::Close()
 SOCKET RIOSocket::GetRawSocket() const
 {
 	return RawSocket.load();
+}
 }

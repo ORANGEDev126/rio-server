@@ -2,6 +2,8 @@
 #include "RIOBufferPool.h"
 #include "RIOBuffer.h"
 
+namespace network
+{
 RIOBufferPool* RIOBufferPool::Instance = nullptr;
 std::mutex RIOBufferPool::InstMutex;
 
@@ -51,7 +53,7 @@ RIOBuffer* RIOBufferPool::Slot::Alloc()
 	else
 	{
 		buffer = BufferList.front();
-		BufferList.pop_front();	
+		BufferList.pop_front();
 	}
 
 	return buffer;
@@ -93,4 +95,5 @@ std::list<RIOBuffer*> RIOBufferPool::Slot::NewAlloc()
 	}
 
 	return list;
+}
 }

@@ -2,6 +2,8 @@
 #include "HTTPServer.h"
 #include "HTTPSocket.h"
 
+namespace network
+{
 HTTPServer::HTTPServer(int threadCount)
 	: RIOServer(threadCount)
 {
@@ -16,4 +18,5 @@ RIOSocket* HTTPServer::CreateSocket(SOCKET rawSocket, const SOCKADDR_IN& addr)
 int HTTPServer::GetPort()
 {
 	return 80;
+}
 }

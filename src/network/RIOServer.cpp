@@ -2,6 +2,8 @@
 #include "RIOServer.h"
 #include "RIOSocket.h"
 
+namespace network
+{
 RIOServer::RIOServer(int threadCount)
 	: ThreadContainer(threadCount)
 	, StopFlag(true)
@@ -100,4 +102,5 @@ void RIOServer::AcceptLoop()
 			}
 		}
 	}
+}
 }

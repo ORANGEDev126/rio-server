@@ -3,6 +3,8 @@
 #include "RIOBufferPool.h"
 #include "RIOBuffer.h"
 
+namespace network
+{
 HTTPSocket::HTTPSocket(SOCKET rawSocket, const SOCKADDR_IN& addr)
 	: RIOSocket(rawSocket, addr)
 {
@@ -28,4 +30,5 @@ void HTTPSocket::OnConnected()
 void HTTPSocket::OnClose()
 {
 	PrintConsole("close http socket");
+}
 }
