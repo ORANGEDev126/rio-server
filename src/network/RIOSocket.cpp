@@ -1,24 +1,25 @@
 #include "stdafx.h"
 #include "RIOSocket.h"
-#include "RIOServer.h"
+#include "RIOserver.h"
 #include "RIOBuffer.h"
 #include "RIOBufferPool.h"
+#include "RIOStreamBuffer.h"
 
 namespace network
 {
-RIOSocket::RIOSocket(SOCKET rawSock, const SOCKADDR_IN& addr)
-	: RawSocket(rawSock)
-	, Addr(addr)
-	, RequestQueue(RIO_INVALID_RQ)
-	, Server(nullptr)
+RIOSocket::RIOSocket(SOCKET rawSock, const SOCKADDR_IN& client)
+	: rawSocket(rawSock)
+	, addr(client)
+	, requestQueue(RIO_INVALID_RQ)
+	, server(nullptr)
 {
 
 }
 
-void RIOSocket::Initialize(RIO_RQ requestQueue, RIOServer* server)
+void RIOSocket::Initialize(RIO_RQ queue, RIOServer* owner)
 {
-	RequestQueue = requestQueue;
-	Server = server;
+	requestQueue = queue;
+	server = owner;
 
 	OnConnected();
 }
@@ -31,66 +32,118 @@ void RIOSocket::OnIOCallBack(int status, RIOBuffer* buffer, int transferred)
 	}
 	else
 	{
-		if (buffer->Type == RequestType::RIO_READ)
-			OnRead(buffer, transferred);
-		else if (buffer->Type == RequestType::RIO_WRITE)
-			OnWrite(buffer, transferred);
+		if (buffer->type == REQUEST_TYPE::RIO_READ)
+			OnReadCallBack(buffer, transferred);
+		else if (buffer->type == REQUEST_TYPE::RIO_WRITE)
+			OnWriteCallBack(buffer, transferred);
 	}
 
-	g_RIOBufferPool->FreeBuffer(buffer);
 	DecRef();
+}
+
+void RIOSocket::OnReadCallBack(RIOBuffer* buffer, int transferred)
+{
+	buffer->size += transferred;
+
+	for (;;)
+	{
+		RIOStreamBuffer streamBuf(readBuf);
+		std::istream packet(&streamBuf);
+
+		int packetLength = PacketSize(packet);
+		int currLength = static_cast<int>(streamBuf.showmanyc());
+
+		packetLength = packetLength == 0 ? currLength : packetLength;
+
+		if (currLength >= packetLength)
+		{
+			int left = currLength - packetLength;
+			buffer->size -= left;
+
+			OnRead(packet);
+
+			std::copy(buffer->rawBuf + buffer->size, buffer->rawBuf + buffer->size + left, readBuf.front()->rawBuf);
+			readBuf.front()->size = left;
+
+			while (readBuf.size() != 1)
+			{
+				auto* buf = readBuf.back();
+				readBuf.pop_back();
+				RIOBufferPool::GetInstance()->Free(buf);
+			}
+
+			if (left == 0)
+				break;
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	Read();
+}
+
+void RIOSocket::OnWriteCallBack(RIOBuffer* buffer, int transferred)
+{
+	OnWrite(buffer, transferred);
+	RIOBufferPool::GetInstance()->Free(buffer);
 }
 
 void RIOSocket::Read()
 {
-	auto* buffer = g_RIOBufferPool->AllocBuffer();
-	buffer->Type = RequestType::RIO_READ;
-	buffer->Length = BUFFER_SIZE;
+	if (readBuf.empty() || readBuf.back()->size == BUFFER_SIZE)
+		readBuf.push_back(RIOBufferPool::GetInstance()->Alloc());
+
+	auto* buf = readBuf.back();
+	buf->Offset = buf->size;
+	buf->Length = BUFFER_SIZE - buf->size;
+	buf->type = REQUEST_TYPE::RIO_READ;
 
 	IncRef();
-
-	if (!g_RIO.RIOReceive(RequestQueue, static_cast<RIO_BUF*>(buffer), 1, 0, buffer))
+	std::lock_guard<std::mutex> lock(requestLock);
+	if (!g_RIO.RIOReceive(requestQueue, buf, 1, NULL, buf))
 	{
 		auto error = WSAGetLastError();
-		PrintConsole(std::string("RIO receive error ") + std::to_string(error));
-
-		g_RIOBufferPool->FreeBuffer(buffer);
+		PrintConsole(std::string("receive request failed ") + std::to_string(error));
 		DecRef();
 		Close();
-		return;
 	}
 }
 
-void RIOSocket::Write(RIOBuffer* buffer)
+bool RIOSocket::Write(RIOBuffer* buffer)
 {
-	buffer->Type = RequestType::RIO_WRITE;
-	IncRef();
+	buffer->Length = buffer->size;
+	buffer->type = REQUEST_TYPE::RIO_WRITE;
 
-	if (!g_RIO.RIOSend(RequestQueue, static_cast<RIO_BUF*>(buffer), 1, 0, buffer))
+	IncRef();
+	std::lock_guard<std::mutex> lock(requestLock);
+	if (!g_RIO.RIOSend(requestQueue, buffer, 1, NULL, buffer))
 	{
 		auto error = WSAGetLastError();
-		PrintConsole(std::string("RIO send error ") + std::to_string(error));
-
-		g_RIOBufferPool->FreeBuffer(buffer);
+		PrintConsole(std::string("send request failed ") + std::to_string(error));
+		RIOBufferPool::GetInstance()->Free(buffer);
 		DecRef();
 		Close();
-		return;
+		return false;
 	}
+
+	return true;
 }
 
 void RIOSocket::Close()
 {
-	auto before = RawSocket.exchange(INVALID_SOCKET);
+	auto before = rawSocket.exchange(INVALID_SOCKET);
 	if (before != INVALID_SOCKET)
 	{
 		closesocket(before);
 		OnClose();
-		Server->DeleteSocket(this);
+		server->DeleteSocket(this);
 	}
 }
 
 SOCKET RIOSocket::GetRawSocket() const
 {
-	return RawSocket.load();
+	return rawSocket.load();
 }
 }

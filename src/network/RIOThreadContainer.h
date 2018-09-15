@@ -6,9 +6,9 @@ namespace network
 {
 struct ThreadSlot
 {
-	std::shared_ptr<std::thread> Thread;
+	std::shared_ptr<std::thread> thread;
 	RIO_CQ RIOCQ;
-	int64_t BindedCount;
+	int64_t bindedCount;
 };
 
 class RIOThreadContainer
@@ -23,9 +23,9 @@ public:
 	RIO_RQ BindSocket(SOCKET rawSock, RIOSocket* socket);
 
 private:
-	std::vector<ThreadSlot> Slots;
-	std::mutex SlotMutex;
-	int ThreadCount;
-	volatile bool StopFlag;
+	std::vector<ThreadSlot> slots;
+	std::mutex slotLock;
+	int threadCount;
+	volatile bool stop;
 };
 }

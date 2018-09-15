@@ -21,9 +21,9 @@ private:
 	virtual int GetPort() = 0;
 
 	SOCKET listenSocket;
-	bool StopFlag;
-	std::unique_ptr<std::thread> AcceptThread;
-	RIOThreadContainer ThreadContainer;
-	RIOSocketContainer SocketContainer;
+	bool stop;
+	std::unique_ptr<std::thread> acceptThread;
+	RIOThreadContainer threadContainer;
+	RIOSocketContainer socketContainer;
 };
 }

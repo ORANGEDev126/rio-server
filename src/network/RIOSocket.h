@@ -4,7 +4,7 @@
 
 namespace network { struct RIOBuffer; }
 namespace network { class RIOServer; }
-namespace network { class RIOBuffer; }
+namespace network { struct RIOBuffer; }
 
 namespace network
 {
@@ -14,23 +14,29 @@ public:
 	RIOSocket(SOCKET rawSock, const SOCKADDR_IN& addr);
 	virtual ~RIOSocket() = default;
 
-	void Initialize(RIO_RQ requestQueue, RIOServer* server);
+	void Initialize(RIO_RQ queue, RIOServer* owner);
 	void OnIOCallBack(int status, RIOBuffer* buffer, int transferred);
 	void Read();
-	void Write(RIOBuffer* buffer);
+	bool Write(RIOBuffer* buffer);
 	void Close();
 	SOCKET GetRawSocket() const;
 
 private:
-	virtual void OnRead(RIOBuffer* buffer, int transferred) = 0;
+	void OnReadCallBack(RIOBuffer* buffer, int transferred);
+	void OnWriteCallBack(RIOBuffer* buffer, int transferred);
+
+	virtual void OnRead(std::istream& packet) = 0;
 	virtual void OnWrite(RIOBuffer* buffer, int transferred) = 0;
 	virtual void OnConnected() = 0;
 	virtual void OnClose() = 0;
 
-	std::atomic<SOCKET> RawSocket;
-	SOCKADDR_IN Addr;
-	RIO_RQ RequestQueue;
-	RIOBuffer* ReadBuffer;
-	RIOServer* Server;
+	virtual int PacketSize(std::istream& packet) = 0;
+
+	std::atomic<SOCKET> rawSocket;
+	SOCKADDR_IN addr;
+	RIO_RQ requestQueue;
+	std::mutex requestLock;
+	std::vector<RIOBuffer*> readBuf;
+	RIOServer* server;
 };
 }

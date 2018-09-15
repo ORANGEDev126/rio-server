@@ -14,7 +14,7 @@ public:
 	std::set<RIOSocket*> GetAll();
 
 private:
-	std::mutex ContainerMutex;
-	std::set<RIOSocket*> Sockets;
+	std::mutex lock;
+	std::set<RIOSocket*> sockets;
 };
 }

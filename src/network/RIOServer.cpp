@@ -5,8 +5,8 @@
 namespace network
 {
 RIOServer::RIOServer(int threadCount)
-	: ThreadContainer(threadCount)
-	, StopFlag(true)
+	: threadContainer(threadCount)
+	, stop(true)
 {
 
 }
@@ -38,8 +38,8 @@ void RIOServer::Run()
 		return;
 	}
 
-	ThreadContainer.StartThread();
-	AcceptThread = std::make_unique<std::thread>([this]()
+	threadContainer.StartThread();
+	acceptThread = std::make_unique<std::thread>([this]()
 	{
 		AcceptLoop();
 	});
@@ -47,18 +47,18 @@ void RIOServer::Run()
 
 void RIOServer::Stop()
 {
-	StopFlag = true;
+	stop = true;
 	closesocket(listenSocket);
 
-	for (auto& socket : SocketContainer.GetAll())
+	for (auto& socket : socketContainer.GetAll())
 		socket->Close();
 
-	AcceptThread->join();
+	acceptThread->join();
 }
 
 void RIOServer::DeleteSocket(RIOSocket* sock)
 {
-	SocketContainer.DeleteSocket(sock);
+	socketContainer.DeleteSocket(sock);
 }
 
 void RIOServer::AcceptLoop()
@@ -70,14 +70,14 @@ void RIOServer::AcceptLoop()
 		return;
 	}
 
-	StopFlag = false;
+	stop = false;
 	PrintConsole(std::string("start server port : ") + std::to_string(GetPort()));
 
 	for (;;)
 	{
 		auto acceptedSock = accept(listenSocket, NULL, NULL);
 
-		if (StopFlag)
+		if (stop)
 			return;
 
 		if (acceptedSock == INVALID_SOCKET)
@@ -94,10 +94,10 @@ void RIOServer::AcceptLoop()
 		auto* socket = CreateSocket(acceptedSock, addr);
 		if (socket)
 		{
-			auto rq = ThreadContainer.BindSocket(acceptedSock, socket);
+			auto rq = threadContainer.BindSocket(acceptedSock, socket);
 			if (rq)
 			{
-				SocketContainer.AddSocket(socket);
+				socketContainer.AddSocket(socket);
 				socket->Initialize(rq, this);
 			}
 		}

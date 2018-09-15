@@ -4,56 +4,56 @@
 
 namespace network
 {
-RIOBufferPool* RIOBufferPool::Instance = nullptr;
-std::mutex RIOBufferPool::InstMutex;
+RIOBufferPool* RIOBufferPool::instance = nullptr;
+std::mutex RIOBufferPool::instLock;
 
 RIOBufferPool* RIOBufferPool::GetInstance()
 {
-	if (!Instance)
+	if (!instance)
 	{
-		std::lock_guard<std::mutex> lock(InstMutex);
-		if (!Instance)
-			Instance = new RIOBufferPool();
+		std::lock_guard<std::mutex> lock(instLock);
+		if (!instance)
+			instance = new RIOBufferPool();
 	}
 
-	return Instance;
+	return instance;
 }
 
 RIOBufferPool::RIOBufferPool()
-	: AllocIndex(0)
-	, FreeIndex(0)
-	, SlotList(16)
+	: allocCount(0)
+	, freeCount(0)
+	, slots(16)
 {
 }
 
-RIOBuffer* RIOBufferPool::AllocBuffer()
+RIOBuffer* RIOBufferPool::Alloc()
 {
-	auto index = AllocIndex.fetch_add(1) % SlotList.size();
-	return SlotList[index].Alloc();
+	auto index = allocCount.fetch_add(1) % slots.size();
+	return slots[index].Alloc();
 }
 
-void RIOBufferPool::FreeBuffer(RIOBuffer* buffer)
+void RIOBufferPool::Free(RIOBuffer* buffer)
 {
-	auto index = FreeIndex.fetch_add(1) % SlotList.size();
-	SlotList[index].Free(buffer);
+	auto index = freeCount.fetch_add(1) % slots.size();
+	slots[index].Free(buffer);
 }
 
 RIOBuffer* RIOBufferPool::Slot::Alloc()
 {
-	std::lock_guard<std::mutex> lock(ListMutex);
+	std::lock_guard<std::mutex> lock(mutex);
 	RIOBuffer* buffer = nullptr;
 
-	if (BufferList.empty())
+	if (buf.empty())
 	{
-		auto newList = NewAlloc();
-		BufferList.insert(std::end(BufferList), std::begin(newList), std::end(newList));
-		buffer = BufferList.front();
-		BufferList.pop_front();
+		auto newBuf = New();
+		buf.insert(std::end(buf), std::begin(newBuf), std::end(newBuf));
+		buffer = buf.front();
+		buf.pop_front();
 	}
 	else
 	{
-		buffer = BufferList.front();
-		BufferList.pop_front();
+		buffer = buf.front();
+		buf.pop_front();
 	}
 
 	return buffer;
@@ -63,12 +63,13 @@ void RIOBufferPool::Slot::Free(RIOBuffer* buffer)
 {
 	buffer->Length = 0;
 	buffer->Offset = 0;
+	buffer->size = 0;
 
-	std::lock_guard<std::mutex> lock(ListMutex);
-	BufferList.push_back(buffer);
+	std::lock_guard<std::mutex> lock(mutex);
+	buf.push_front(buffer);
 }
 
-std::list<RIOBuffer*> RIOBufferPool::Slot::NewAlloc()
+std::list<RIOBuffer*> RIOBufferPool::Slot::New()
 {
 	std::list<RIOBuffer*> list;
 
@@ -89,7 +90,7 @@ std::list<RIOBuffer*> RIOBufferPool::Slot::NewAlloc()
 		buffer->BufferId = bufferID;
 		buffer->Length = 0;
 		buffer->Offset = 0;
-		buffer->RawBuf = base;
+		buffer->rawBuf = base;
 
 		list.push_back(buffer);
 	}

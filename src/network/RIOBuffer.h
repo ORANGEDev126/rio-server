@@ -2,7 +2,7 @@
 
 namespace network
 {
-enum class RequestType
+enum class REQUEST_TYPE
 {
 	RIO_READ,
 	RIO_WRITE
@@ -10,7 +10,8 @@ enum class RequestType
 
 struct RIOBuffer : public RIO_BUF
 {
-	char* RawBuf = nullptr;
-	RequestType Type;
+	char* rawBuf = nullptr;
+	int size = 0;
+	REQUEST_TYPE type;
 };
 }

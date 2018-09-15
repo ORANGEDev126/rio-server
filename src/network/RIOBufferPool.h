@@ -1,5 +1,8 @@
 #pragma once
 
+#define GRANULARITY 65536
+#define BUFFER_SIZE 8192
+
 namespace network { struct RIOBuffer; }
 
 namespace network
@@ -16,28 +19,24 @@ public:
 		void Free(RIOBuffer* buffer);
 
 	private:
-		std::list<RIOBuffer*> NewAlloc();
+		std::list<RIOBuffer*> New();
 
-		std::list<RIOBuffer*> BufferList;
-		std::mutex ListMutex;
+		std::list<RIOBuffer*> buf;
+		std::mutex mutex;
 	};
 
 	RIOBufferPool();
 	~RIOBufferPool();
 
-	RIOBuffer* AllocBuffer();
-	void FreeBuffer(RIOBuffer* buffer);
+	RIOBuffer* Alloc();
+	void Free(RIOBuffer* buffer);
 
 private:
-	static RIOBufferPool* Instance;
-	static std::mutex InstMutex;
+	static RIOBufferPool* instance;
+	static std::mutex instLock;
 
-	std::vector<Slot> SlotList;
-	std::atomic_int64_t AllocIndex;
-	std::atomic_int64_t FreeIndex;
+	std::vector<Slot> slots;
+	std::atomic_int64_t allocCount;
+	std::atomic_int64_t freeCount;
 };
 }
-
-#define g_RIOBufferPool RIOBufferPool::GetInstance()
-#define GRANULARITY 65536
-#define BUFFER_SIZE 8192

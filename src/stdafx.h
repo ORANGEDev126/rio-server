@@ -3,6 +3,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #define _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
+#define _SCL_SECURE_NO_WARNINGS
 
 #include <WinSock2.h>
 #include <MSWSock.h>
@@ -18,6 +19,7 @@
 #include <list>
 #include <map>
 #include <fstream>
+#include <streambuf>
 
 #include <boost\thread\future.hpp>
 

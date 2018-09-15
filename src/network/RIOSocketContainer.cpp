@@ -6,8 +6,8 @@ namespace network
 {
 RIOSocketContainer::~RIOSocketContainer()
 {
-	std::unique_lock<std::mutex> lock(ContainerMutex);
-	auto temp = std::move(Sockets);
+	std::unique_lock<std::mutex> lock(lock);
+	auto temp = std::move(sockets);
 	lock.unlock();
 
 	for (auto& socket : temp)
@@ -18,25 +18,25 @@ void RIOSocketContainer::AddSocket(RIOSocket* socket)
 {
 	socket->IncRef();
 
-	std::lock_guard<std::mutex> lock(ContainerMutex);
-	Sockets.insert(socket);
+	std::lock_guard<std::mutex> lock(lock);
+	sockets.insert(socket);
 }
 
 void RIOSocketContainer::DeleteSocket(RIOSocket* socket)
 {
-	std::lock_guard<std::mutex> lock(ContainerMutex);
-	auto iter = Sockets.find(socket);
-	if (iter != Sockets.end())
+	std::lock_guard<std::mutex> lock(lock);
+	auto iter = sockets.find(socket);
+	if (iter != sockets.end())
 	{
 		auto* socket = *iter;
-		Sockets.erase(iter);
+		sockets.erase(iter);
 		socket->DecRef();
 	}
 }
 
 std::set<RIOSocket*> RIOSocketContainer::GetAll()
 {
-	std::lock_guard<std::mutex> lock(ContainerMutex);
-	return Sockets;
+	std::lock_guard<std::mutex> lock(lock);
+	return sockets;
 }
 }

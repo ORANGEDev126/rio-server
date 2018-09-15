@@ -7,8 +7,8 @@
 namespace network
 {
 RIOThreadContainer::RIOThreadContainer(int threadCount)
-	: ThreadCount(threadCount)
-	, StopFlag(false)
+	: threadCount(threadCount)
+	, stop(false)
 {
 }
 
@@ -21,7 +21,7 @@ void RIOThreadContainer::WorkerThread(RIO_CQ cq)
 {
 	RIORESULT result[256] = { 0, };
 
-	while (!StopFlag)
+	while (!stop)
 	{
 		int size = g_RIO.RIODequeueCompletion(cq, result, 256);
 
@@ -30,9 +30,9 @@ void RIOThreadContainer::WorkerThread(RIO_CQ cq)
 			auto status = result[i].Status;
 			auto transferred = (result[i].BytesTransferred);
 			auto socketContext = reinterpret_cast<RIOSocket*>(result[i].SocketContext);
-			auto requestContext = reinterpret_cast<RIOBuffer*>(result[i].RequestContext);
+			auto buffer = reinterpret_cast<RIOBuffer*>(result[i].RequestContext);
 
-			socketContext->OnIOCallBack(status, requestContext, transferred);
+			socketContext->OnIOCallBack(status, buffer, transferred);
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -41,10 +41,10 @@ void RIOThreadContainer::WorkerThread(RIO_CQ cq)
 
 void RIOThreadContainer::StartThread()
 {
-	StopFlag = false;
+	stop = false;
 
-	std::lock_guard<std::mutex> lock(SlotMutex);
-	for (int i = 0; i < ThreadCount; ++i)
+	std::lock_guard<std::mutex> lock(slotLock);
+	for (int i = 0; i < threadCount; ++i)
 	{
 		auto cq = g_RIO.RIOCreateCompletionQueue(256, NULL);
 		if (cq == RIO_INVALID_CQ)
@@ -60,37 +60,37 @@ void RIOThreadContainer::StartThread()
 		});
 
 		ThreadSlot slot{ thread, cq, 0 };
-		Slots.push_back(slot);
+		slots.push_back(slot);
 	}
 }
 
 void RIOThreadContainer::StopThread()
 {
-	StopFlag = true;
+	stop = true;
 
-	std::lock_guard<std::mutex> lock(SlotMutex);
-	for (int i = 0; i < Slots.size(); ++i)
+	std::lock_guard<std::mutex> lock(slotLock);
+	for (int i = 0; i < slots.size(); ++i)
 	{
-		Slots[i].Thread->join();
-		g_RIO.RIOCloseCompletionQueue(Slots[i].RIOCQ);
+		slots[i].thread->join();
+		g_RIO.RIOCloseCompletionQueue(slots[i].RIOCQ);
 	}
 
-	Slots.clear();
+	slots.clear();
 }
 
 RIO_RQ RIOThreadContainer::BindSocket(SOCKET rawSock, RIOSocket* socket)
 {
-	std::lock_guard<std::mutex> lock(SlotMutex);
-	if (Slots.empty())
+	std::lock_guard<std::mutex> lock(slotLock);
+	if (slots.empty())
 	{
 		PrintConsole("bind socket error slots empty");
 		return RIO_INVALID_RQ;
 	}
 
-	int slotIndex = static_cast<int>(rawSock) % Slots.size();
+	int slotIndex = static_cast<int>(rawSock) % slots.size();
 
 	auto rq = g_RIO.RIOCreateRequestQueue(rawSock, 1, 1, 1, 1,
-		Slots[slotIndex].RIOCQ, Slots[slotIndex].RIOCQ, socket);
+		slots[slotIndex].RIOCQ, slots[slotIndex].RIOCQ, socket);
 	if (rq == RIO_INVALID_RQ)
 	{
 		auto error = WSAGetLastError();
@@ -98,7 +98,7 @@ RIO_RQ RIOThreadContainer::BindSocket(SOCKET rawSock, RIOSocket* socket)
 		return rq;
 	}
 
-	++Slots[slotIndex].BindedCount;
+	++slots[slotIndex].bindedCount;
 	return rq;
 }
 }

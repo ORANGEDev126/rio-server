@@ -12,6 +12,6 @@ protected:
 	virtual ~ReferenceObject() = default;
 
 private:
-	std::atomic<int> Count{ 0 };
+	std::atomic<int> count{ 0 };
 };
 }

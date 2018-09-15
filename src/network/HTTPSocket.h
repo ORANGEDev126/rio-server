@@ -10,9 +10,10 @@ public:
 	HTTPSocket(SOCKET rawSocket, const SOCKADDR_IN& addr);
 
 private:
-	virtual void OnRead(RIOBuffer* buffer, int transferred) override;
+	virtual void OnRead(std::istream& buf) override;
 	virtual void OnWrite(RIOBuffer* buffer, int transferred) override;
 	virtual void OnConnected() override;
 	virtual void OnClose() override;
+	virtual int PacketSize(std::istream& packet) override;
 };
 }

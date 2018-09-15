@@ -5,12 +5,12 @@ namespace network
 {
 void ReferenceObject::IncRef()
 {
-	Count.fetch_add(1);
+	count.fetch_add(1);
 }
 
 void ReferenceObject::DecRef()
 {
-	if (Count.fetch_sub(1) - 1 == 0)
+	if (count.fetch_sub(1) - 1 == 0)
 	{
 		PrintConsole("delete object");
 		delete this;
