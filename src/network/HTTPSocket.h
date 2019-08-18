@@ -11,7 +11,6 @@ public:
 
 private:
 	virtual void OnRead(std::istream& buf) override;
-	virtual void OnWrite(RIOBuffer* buffer, int transferred) override;
 	virtual void OnConnected() override;
 	virtual void OnClose() override;
 	virtual int PacketSize(std::istream& packet) override;

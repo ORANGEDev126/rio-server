@@ -4,9 +4,10 @@
 
 namespace network
 {
-RIOServer::RIOServer(int threadCount)
+RIOServer::RIOServer(int threadCount, int port)
 	: threadContainer(std::make_shared<RIOThreadContainer>(threadCount))
 	, socketContainer(std::make_shared<RIOSocketContainer>())
+	, port(port)
 	, stop(true)
 {
 
@@ -29,7 +30,7 @@ void RIOServer::Run()
 
 	SOCKADDR_IN addr = { 0, };
 	addr.sin_family = AF_INET;
-	addr.sin_port = htons(GetPort());
+	addr.sin_port = htons(port);
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	if (bind(listenSocket, reinterpret_cast<SOCKADDR*>(&addr), sizeof(addr)) == SOCKET_ERROR)
@@ -67,7 +68,7 @@ void RIOServer::AcceptLoop()
 	}
 
 	stop = false;
-	PrintConsole(std::string("start server port : ") + std::to_string(GetPort()));
+	PrintConsole(std::string("start server port : ") + std::to_string(port));
 
 	for (;;)
 	{

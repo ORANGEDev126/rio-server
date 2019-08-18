@@ -70,12 +70,7 @@ void RIOSocket::OnReadCallBack(RIOBuffer* buffer)
 					  buffer->rawBuf + buffer->size + left, readBuf.front()->rawBuf);
 			buffer->size = left;
 
-			while (readBuf.size() != 1)
-			{
-				auto* buf = readBuf.back();
-				readBuf.pop_back();
-				RIOBufferPool::GetInstance()->Free(buf);
-			}
+			FreeReadBufUntilLast();
 
 			if (left == 0)
 				break;
@@ -96,7 +91,7 @@ void RIOSocket::OnWriteCallBack(RIOBuffer* buffer)
 
 void RIOSocket::FreeReadBufUntilLast()
 {
-	if (readBuf.empty())
+	if (readBuf.empty() || readBuf.size() == 1)
 		return;
 
 	auto* last = readBuf.back();

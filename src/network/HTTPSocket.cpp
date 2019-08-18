@@ -16,11 +16,6 @@ void HTTPSocket::OnRead(std::istream& buf)
 	PrintConsole(read);
 }
 
-void HTTPSocket::OnWrite(RIOBuffer* buffer, int transferred)
-{
-
-}
-
 void HTTPSocket::OnConnected()
 {
 	PrintConsole("connected http socket");

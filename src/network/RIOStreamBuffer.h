@@ -10,9 +10,9 @@ class RIOStreamBuffer : public std::streambuf
 public:
 	RIOStreamBuffer(const std::vector<RIOBuffer*>& buffer);
 
-	int underflow() override;
-	int uflow() override;
-	int pbackfail(int ch = std::char_traits<char>::eof()) override;
+	RIOStreamBuffer::int_type underflow() override;
+	RIOStreamBuffer::int_type uflow() override;
+	RIOStreamBuffer::int_type pbackfail(int ch = std::char_traits<char>::eof()) override;
 	std::streamsize showmanyc() override;
 
 private:

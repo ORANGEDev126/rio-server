@@ -20,7 +20,7 @@ RIOStreamBuffer::RIOStreamBuffer(const std::vector<RIOBuffer*>& buffer)
 	}
 }
 
-int RIOStreamBuffer::underflow()
+RIOStreamBuffer::int_type RIOStreamBuffer::underflow()
 {
 	if (curr == end)
 	{
@@ -34,19 +34,19 @@ int RIOStreamBuffer::underflow()
 		curr = buf[++currIndex]->rawBuf;
 	}
 
-	return *curr;
+	return traits_type::to_int_type(*curr);
 }
 
-int RIOStreamBuffer::uflow()
+RIOStreamBuffer::int_type RIOStreamBuffer::uflow()
 {
-	int value = underflow();
+	auto value = underflow();
 	if (value != std::char_traits<char>::eof())
 		++curr;
 
 	return value;
 }
 
-int RIOStreamBuffer::pbackfail(int ch)
+RIOStreamBuffer::int_type RIOStreamBuffer::pbackfail(int ch)
 {
 	if (curr == begin || (ch != std::char_traits<char>::eof() && ch != curr[-1]))
 		return std::char_traits<char>::eof();
@@ -61,7 +61,7 @@ int RIOStreamBuffer::pbackfail(int ch)
 		--curr;
 	}
 
-	return *curr;
+	return traits_type::to_int_type(*curr);
 }
 
 std::streamsize RIOStreamBuffer::showmanyc()
