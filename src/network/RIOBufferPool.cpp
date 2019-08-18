@@ -46,7 +46,7 @@ RIOBuffer* RIOBufferPool::Slot::Alloc()
 	if (buf.empty())
 	{
 		auto newBuf = New();
-		buf.insert(std::end(buf), std::begin(newBuf), std::end(newBuf));
+		buf = std::move(newBuf);
 		buffer = buf.front();
 		buf.pop_front();
 	}

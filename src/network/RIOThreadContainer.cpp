@@ -32,10 +32,11 @@ void RIOThreadContainer::WorkerThread(RIO_CQ cq)
 			auto socketContext = reinterpret_cast<RIOSocket*>(result[i].SocketContext);
 			auto buffer = reinterpret_cast<RIOBuffer*>(result[i].RequestContext);
 
-			socketContext->OnIOCallBack(status, buffer, transferred);
+			auto socket = socketContext->PopFromSelfContainer();
+			socket->OnIOCallBack(status, buffer, transferred);
 		}
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		std::this_thread::yield();
 	}
 }
 
@@ -78,7 +79,7 @@ void RIOThreadContainer::StopThread()
 	slots.clear();
 }
 
-RIO_RQ RIOThreadContainer::BindSocket(SOCKET rawSock, RIOSocket* socket)
+RIO_RQ RIOThreadContainer::BindSocket(SOCKET rawSock, const std::shared_ptr<RIOSocket>& socket)
 {
 	std::lock_guard<std::mutex> lock(slotLock);
 	if (slots.empty())
@@ -90,7 +91,7 @@ RIO_RQ RIOThreadContainer::BindSocket(SOCKET rawSock, RIOSocket* socket)
 	int slotIndex = static_cast<int>(rawSock) % slots.size();
 
 	auto rq = g_RIO.RIOCreateRequestQueue(rawSock, 1, 1, 1, 1,
-		slots[slotIndex].RIOCQ, slots[slotIndex].RIOCQ, socket);
+		slots[slotIndex].RIOCQ, slots[slotIndex].RIOCQ, socket.get());
 	if (rq == RIO_INVALID_RQ)
 	{
 		auto error = WSAGetLastError();

@@ -9,12 +9,12 @@ class RIOSocketContainer
 public:
 	~RIOSocketContainer();
 
-	void AddSocket(RIOSocket* socket);
-	void DeleteSocket(RIOSocket* socket);
-	std::set<RIOSocket*> GetAll();
+	void AddSocket(const std::shared_ptr<RIOSocket>& socket);
+	void DeleteSocket(const std::shared_ptr<RIOSocket>& socket);
+	std::set<std::shared_ptr<RIOSocket>> GetAll();
 
 private:
 	std::mutex lock;
-	std::set<RIOSocket*> sockets;
+	std::set<std::shared_ptr<RIOSocket>> sockets;
 };
 }

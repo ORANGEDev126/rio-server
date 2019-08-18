@@ -11,15 +11,21 @@ RIOSocket::RIOSocket(SOCKET rawSock, const SOCKADDR_IN& client)
 	: rawSocket(rawSock)
 	, addr(client)
 	, requestQueue(RIO_INVALID_RQ)
-	, server(nullptr)
 {
 
 }
 
-void RIOSocket::Initialize(RIO_RQ queue, RIOServer* owner)
+RIOSocket::~RIOSocket()
+{
+	FreeAllReadBuf();
+}
+
+void RIOSocket::Initialize(RIO_RQ queue, const std::shared_ptr<RIOSocketContainer>& socketContainer)
 {
 	requestQueue = queue;
-	server = owner;
+	container = socketContainer;
+
+	Read();
 
 	OnConnected();
 }
@@ -32,19 +38,17 @@ void RIOSocket::OnIOCallBack(int status, RIOBuffer* buffer, int transferred)
 	}
 	else
 	{
-		if (buffer->type == REQUEST_TYPE::RIO_READ)
-			OnReadCallBack(buffer, transferred);
-		else if (buffer->type == REQUEST_TYPE::RIO_WRITE)
-			OnWriteCallBack(buffer, transferred);
-	}
+		buffer->size += transferred;
 
-	DecRef();
+		if (buffer->type == REQUEST_TYPE::RIO_READ)
+			OnReadCallBack(buffer);
+		else if (buffer->type == REQUEST_TYPE::RIO_WRITE)
+			OnWriteCallBack(buffer);
+	}
 }
 
-void RIOSocket::OnReadCallBack(RIOBuffer* buffer, int transferred)
+void RIOSocket::OnReadCallBack(RIOBuffer* buffer)
 {
-	buffer->size += transferred;
-
 	for (;;)
 	{
 		RIOStreamBuffer streamBuf(readBuf);
@@ -62,8 +66,9 @@ void RIOSocket::OnReadCallBack(RIOBuffer* buffer, int transferred)
 
 			OnRead(packet);
 
-			std::copy(buffer->rawBuf + buffer->size, buffer->rawBuf + buffer->size + left, readBuf.front()->rawBuf);
-			readBuf.front()->size = left;
+			std::copy(buffer->rawBuf + buffer->size,
+					  buffer->rawBuf + buffer->size + left, readBuf.front()->rawBuf);
+			buffer->size = left;
 
 			while (readBuf.size() != 1)
 			{
@@ -84,10 +89,32 @@ void RIOSocket::OnReadCallBack(RIOBuffer* buffer, int transferred)
 	Read();
 }
 
-void RIOSocket::OnWriteCallBack(RIOBuffer* buffer, int transferred)
+void RIOSocket::OnWriteCallBack(RIOBuffer* buffer)
 {
-	OnWrite(buffer, transferred);
 	RIOBufferPool::GetInstance()->Free(buffer);
+}
+
+void RIOSocket::FreeReadBufUntilLast()
+{
+	if (readBuf.empty())
+		return;
+
+	auto* last = readBuf.back();
+	readBuf.pop_back();
+
+	for (auto* buf : readBuf)
+		RIOBufferPool::GetInstance()->Free(buf);
+
+	readBuf.clear();
+	readBuf.push_back(last);
+}
+
+void RIOSocket::FreeAllReadBuf()
+{
+	for (auto* buf : readBuf)
+		RIOBufferPool::GetInstance()->Free(buf);
+
+	readBuf.clear();
 }
 
 void RIOSocket::Read()
@@ -100,15 +127,15 @@ void RIOSocket::Read()
 	buf->Length = BUFFER_SIZE - buf->size;
 	buf->type = REQUEST_TYPE::RIO_READ;
 
-	IncRef();
 	std::lock_guard<std::mutex> lock(requestLock);
 	if (!g_RIO.RIOReceive(requestQueue, buf, 1, NULL, buf))
 	{
 		auto error = WSAGetLastError();
 		PrintConsole(std::string("receive request failed ") + std::to_string(error));
-		DecRef();
 		Close();
 	}
+
+	selfContainer.push_back(shared_from_this());
 }
 
 bool RIOSocket::Write(RIOBuffer* buffer)
@@ -116,17 +143,17 @@ bool RIOSocket::Write(RIOBuffer* buffer)
 	buffer->Length = buffer->size;
 	buffer->type = REQUEST_TYPE::RIO_WRITE;
 
-	IncRef();
 	std::lock_guard<std::mutex> lock(requestLock);
 	if (!g_RIO.RIOSend(requestQueue, buffer, 1, NULL, buffer))
 	{
 		auto error = WSAGetLastError();
 		PrintConsole(std::string("send request failed ") + std::to_string(error));
 		RIOBufferPool::GetInstance()->Free(buffer);
-		DecRef();
 		Close();
 		return false;
 	}
+
+	selfContainer.push_back(shared_from_this());
 
 	return true;
 }
@@ -136,9 +163,11 @@ void RIOSocket::Close()
 	auto before = rawSocket.exchange(INVALID_SOCKET);
 	if (before != INVALID_SOCKET)
 	{
+		if (auto socketContainer = container.lock())
+			socketContainer->DeleteSocket(shared_from_this());
+
 		closesocket(before);
 		OnClose();
-		server->DeleteSocket(this);
 	}
 }
 
@@ -146,4 +175,17 @@ SOCKET RIOSocket::GetRawSocket() const
 {
 	return rawSocket.load();
 }
+
+std::shared_ptr<RIOSocket> RIOSocket::PopFromSelfContainer()
+{
+	std::lock_guard<std::mutex> lock(requestLock);
+	if (selfContainer.empty())
+		return nullptr;
+
+	auto pSocket = selfContainer.front();
+	selfContainer.pop_front();
+
+	return pSocket;
+}
+
 }

@@ -20,7 +20,7 @@ public:
 	void WorkerThread(RIO_CQ cq);
 	void StartThread();
 	void StopThread();
-	RIO_RQ BindSocket(SOCKET rawSock, RIOSocket* socket);
+	RIO_RQ BindSocket(SOCKET rawSock, const std::shared_ptr<RIOSocket>& socket);
 
 private:
 	std::vector<ThreadSlot> slots;

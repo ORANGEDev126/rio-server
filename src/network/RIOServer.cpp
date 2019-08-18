@@ -5,7 +5,8 @@
 namespace network
 {
 RIOServer::RIOServer(int threadCount)
-	: threadContainer(threadCount)
+	: threadContainer(std::make_shared<RIOThreadContainer>(threadCount))
+	, socketContainer(std::make_shared<RIOSocketContainer>())
 	, stop(true)
 {
 
@@ -38,7 +39,7 @@ void RIOServer::Run()
 		return;
 	}
 
-	threadContainer.StartThread();
+	threadContainer->StartThread();
 	acceptThread = std::make_unique<std::thread>([this]()
 	{
 		AcceptLoop();
@@ -50,15 +51,10 @@ void RIOServer::Stop()
 	stop = true;
 	closesocket(listenSocket);
 
-	for (auto& socket : socketContainer.GetAll())
+	for (auto& socket : socketContainer->GetAll())
 		socket->Close();
 
 	acceptThread->join();
-}
-
-void RIOServer::DeleteSocket(RIOSocket* sock)
-{
-	socketContainer.DeleteSocket(sock);
 }
 
 void RIOServer::AcceptLoop()
@@ -91,15 +87,15 @@ void RIOServer::AcceptLoop()
 		int addrLen = sizeof(addr);
 		getpeername(acceptedSock, reinterpret_cast<SOCKADDR*>(&addr), &addrLen);
 
-		auto* socket = CreateSocket(acceptedSock, addr);
-		if (socket)
+		auto socket = sockAllocator(acceptedSock, addr);
+		if (!socket)
+			continue;
+		
+		auto rq = threadContainer->BindSocket(acceptedSock, socket);
+		if (rq)
 		{
-			auto rq = threadContainer.BindSocket(acceptedSock, socket);
-			if (rq)
-			{
-				socketContainer.AddSocket(socket);
-				socket->Initialize(rq, this);
-			}
+			socketContainer->AddSocket(socket);
+			socket->Initialize(rq, socketContainer);
 		}
 	}
 }

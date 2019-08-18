@@ -11,30 +11,22 @@ RIOSocketContainer::~RIOSocketContainer()
 	lock.unlock();
 
 	for (auto& socket : temp)
-		socket->DecRef();
+		socket->Close();
 }
 
-void RIOSocketContainer::AddSocket(RIOSocket* socket)
+void RIOSocketContainer::AddSocket(const std::shared_ptr<RIOSocket>& socket)
 {
-	socket->IncRef();
-
 	std::lock_guard<std::mutex> lock(lock);
 	sockets.insert(socket);
 }
 
-void RIOSocketContainer::DeleteSocket(RIOSocket* socket)
+void RIOSocketContainer::DeleteSocket(const std::shared_ptr<RIOSocket>& socket)
 {
 	std::lock_guard<std::mutex> lock(lock);
-	auto iter = sockets.find(socket);
-	if (iter != sockets.end())
-	{
-		auto* socket = *iter;
-		sockets.erase(iter);
-		socket->DecRef();
-	}
+	sockets.erase(socket);
 }
 
-std::set<RIOSocket*> RIOSocketContainer::GetAll()
+std::set<std::shared_ptr<RIOSocket>> RIOSocketContainer::GetAll()
 {
 	std::lock_guard<std::mutex> lock(lock);
 	return sockets;

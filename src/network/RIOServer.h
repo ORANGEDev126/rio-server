@@ -13,17 +13,16 @@ public:
 
 	void Run();
 	void Stop();
-	void DeleteSocket(RIOSocket* sock);
 
 private:
 	void AcceptLoop();
-	virtual RIOSocket* CreateSocket(SOCKET rawSock, const SOCKADDR_IN& addr) = 0;
 	virtual int GetPort() = 0;
 
+	std::function<std::shared_ptr<RIOSocket>(SOCKET, const SOCKADDR_IN&)> sockAllocator;
 	SOCKET listenSocket;
 	bool stop;
 	std::unique_ptr<std::thread> acceptThread;
-	RIOThreadContainer threadContainer;
-	RIOSocketContainer socketContainer;
+	std::shared_ptr<RIOThreadContainer> threadContainer;
+	std::shared_ptr<RIOSocketContainer> socketContainer;
 };
 }
