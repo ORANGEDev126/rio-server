@@ -59,26 +59,22 @@ void RIOSocket::OnReadCallBack(RIOBuffer* buffer)
 
 		packetLength = packetLength == 0 ? currLength : packetLength;
 
-		if (currLength >= packetLength)
-		{
-			int left = currLength - packetLength;
-			buffer->size -= left;
-
-			OnRead(packet);
-
-			std::copy(buffer->rawBuf + buffer->size,
-					  buffer->rawBuf + buffer->size + left, readBuf.front()->rawBuf);
-			buffer->size = left;
-
-			FreeReadBufUntilLast();
-
-			if (left == 0)
-				break;
-		}
-		else
-		{
+		if (currLength < packetLength)
 			break;
-		}
+
+		int left = currLength - packetLength;
+		buffer->size -= left;
+
+		OnRead(packet);
+		
+		std::copy(buffer->rawBuf + buffer->size,
+				  buffer->rawBuf + buffer->size + left, readBuf.front()->rawBuf);
+		buffer->size = left;
+
+		FreeReadBufUntilLast();
+
+		if (left == 0)
+			break;
 	}
 
 	Read();
