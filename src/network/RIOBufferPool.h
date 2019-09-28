@@ -28,10 +28,11 @@ public:
 	RIOBufferPool();
 	~RIOBufferPool();
 
-	RIOBuffer* Alloc();
+	std::shared_ptr<RIOBuffer> Alloc();
+	
+private:
 	void Free(RIOBuffer* buffer);
 
-private:
 	static RIOBufferPool* instance;
 	static std::mutex instLock;
 

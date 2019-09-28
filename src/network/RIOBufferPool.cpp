@@ -26,10 +26,14 @@ RIOBufferPool::RIOBufferPool()
 {
 }
 
-RIOBuffer* RIOBufferPool::Alloc()
+std::shared_ptr<RIOBuffer> RIOBufferPool::Alloc()
 {
 	auto index = allocCount.fetch_add(1) % slots.size();
-	return slots[index].Alloc();
+	auto* buf = slots[index].Alloc();
+	return std::shared_ptr<RIOBuffer>(buf, [](auto buf)
+	{
+		RIOBufferPool::GetInstance()->Free(buf);
+	});
 }
 
 void RIOBufferPool::Free(RIOBuffer* buffer)

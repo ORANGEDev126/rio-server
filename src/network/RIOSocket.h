@@ -8,6 +8,8 @@ namespace network { class RIOSocketContainer; }
 namespace network
 {
 
+static constexpr int MAX_OUTSTANDING_SEND_SIZE = 64;
+
 class RIOSocket : public std::enable_shared_from_this<RIOSocket>
 {
 public:
@@ -15,15 +17,15 @@ public:
 	virtual ~RIOSocket();
 
 	void Initialize(RIO_RQ queue, const std::shared_ptr<RIOSocketContainer>& socketContainer);
-	void OnIOCallBack(int status, RIOBuffer* buffer, int transferred);
+	void OnIOCallBack(int status, const std::shared_ptr<RIOBuffer>& buffer, int transferred);
 	void Read();
-	bool Write(RIOBuffer* buffer);
+	bool Write(const std::shared_ptr<RIOBuffer>& buffer);
 	void Close();
 	SOCKET GetRawSocket() const;
 	std::shared_ptr<RIOSocket> PopFromSelfContainer();
 
 private:
-	void OnReadCallBack(RIOBuffer* buffer);
+	void OnReadCallBack(const std::shared_ptr<RIOBuffer> buffer);
 	void OnWriteCallBack(RIOBuffer* buffer);
 	void FreeReadBufUntilLast();
 	void FreeAllReadBuf();

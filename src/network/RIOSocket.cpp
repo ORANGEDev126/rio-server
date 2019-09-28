@@ -113,7 +113,7 @@ void RIOSocket::Read()
 	if (readBuf.empty() || readBuf.back()->size == BUFFER_SIZE)
 		readBuf.push_back(RIOBufferPool::GetInstance()->Alloc());
 
-	auto* buf = readBuf.back();
+	auto buf = readBuf.back();
 	buf->Offset = buf->size;
 	buf->Length = BUFFER_SIZE - buf->size;
 	buf->type = REQUEST_TYPE::RIO_READ;
@@ -129,7 +129,7 @@ void RIOSocket::Read()
 	selfContainer.push_back(shared_from_this());
 }
 
-bool RIOSocket::Write(RIOBuffer* buffer)
+bool RIOSocket::Write(const std::shared_ptr<RIOBuffer>& buffer)
 {
 	buffer->Length = buffer->size;
 	buffer->type = REQUEST_TYPE::RIO_WRITE;

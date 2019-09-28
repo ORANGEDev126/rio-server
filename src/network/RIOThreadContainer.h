@@ -4,6 +4,9 @@ namespace network { class RIOSocket; }
 
 namespace network
 {
+
+static constexpr int MAX_COMPLETION_QUEUE_SIZE = 32 * 1024;
+
 struct ThreadSlot
 {
 	std::shared_ptr<std::thread> thread;

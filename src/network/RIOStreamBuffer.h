@@ -23,5 +23,4 @@ private:
 	char* end;
 };
 
-
 }

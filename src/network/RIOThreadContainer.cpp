@@ -19,11 +19,11 @@ RIOThreadContainer::~RIOThreadContainer()
 
 void RIOThreadContainer::WorkerThread(RIO_CQ cq)
 {
-	RIORESULT result[256] = { 0, };
+	RIORESULT result[MAX_COMPLETION_QUEUE_SIZE] = { 0, };
 
 	while (!stop)
 	{
-		int size = g_RIO.RIODequeueCompletion(cq, result, 256);
+		int size = g_RIO.RIODequeueCompletion(cq, result, MAX_COMPLETION_QUEUE_SIZE);
 
 		for (int i = 0; i < size; ++i)
 		{
@@ -47,7 +47,7 @@ void RIOThreadContainer::StartThread()
 	std::lock_guard<std::mutex> lock(slotLock);
 	for (int i = 0; i < threadCount; ++i)
 	{
-		auto cq = g_RIO.RIOCreateCompletionQueue(256, NULL);
+		auto cq = g_RIO.RIOCreateCompletionQueue(MAX_COMPLETION_QUEUE_SIZE, NULL);
 		if (cq == RIO_INVALID_CQ)
 		{
 			auto error = WSAGetLastError();
@@ -90,7 +90,7 @@ RIO_RQ RIOThreadContainer::BindSocket(SOCKET rawSock, const std::shared_ptr<RIOS
 
 	int slotIndex = static_cast<int>(rawSock) % slots.size();
 
-	auto rq = g_RIO.RIOCreateRequestQueue(rawSock, 1, 1, 1, 1,
+	auto rq = g_RIO.RIOCreateRequestQueue(rawSock, 1, 1, MAX_OUTSTANDING_SEND_SIZE, 1,
 		slots[slotIndex].RIOCQ, slots[slotIndex].RIOCQ, socket.get());
 	if (rq == RIO_INVALID_RQ)
 	{
