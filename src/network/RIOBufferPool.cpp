@@ -1,23 +1,10 @@
 #include "stdafx.h"
 #include "RIOBufferPool.h"
 #include "RIOBuffer.h"
+#include "RIOStatic.h"
 
 namespace network
 {
-RIOBufferPool* RIOBufferPool::instance = nullptr;
-std::mutex RIOBufferPool::instLock;
-
-RIOBufferPool* RIOBufferPool::GetInstance()
-{
-	if (!instance)
-	{
-		std::lock_guard<std::mutex> lock(instLock);
-		if (!instance)
-			instance = new RIOBufferPool();
-	}
-
-	return instance;
-}
 
 RIOBufferPool::RIOBufferPool()
 	: allocCount(0)
@@ -28,8 +15,8 @@ RIOBufferPool::RIOBufferPool()
 
 std::shared_ptr<RIOBuffer> RIOBufferPool::Alloc()
 {
-	auto index = allocCount.fetch_add(1) % slots.size();
-	auto* buf = slots[index].Alloc();
+	auto index = allocCount_.fetch_add(1) % slots_.size();
+	auto* buf = slots_[index].Alloc();
 	return std::shared_ptr<RIOBuffer>(buf, [](auto buf)
 	{
 		RIOBufferPool::GetInstance()->Free(buf);
@@ -38,65 +25,56 @@ std::shared_ptr<RIOBuffer> RIOBufferPool::Alloc()
 
 void RIOBufferPool::Free(RIOBuffer* buffer)
 {
-	auto index = freeCount.fetch_add(1) % slots.size();
-	slots[index].Free(buffer);
+	auto index = freeCount_.fetch_add(1) % slots_.size();
+	slots_[index].Free(buffer);
 }
 
 RIOBuffer* RIOBufferPool::Slot::Alloc()
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	std::lock_guard<std::mutex> lock(mutex_);
 	RIOBuffer* buffer = nullptr;
 
-	if (buf.empty())
+	if (buf_.empty())
 	{
 		auto newBuf = New();
-		buf = std::move(newBuf);
-		buffer = buf.front();
-		buf.pop_front();
+		buf_ = std::move(newBuf);
 	}
-	else
-	{
-		buffer = buf.front();
-		buf.pop_front();
-	}
+
+	buffer = buf_.front();
+	buf_.pop_front();
 
 	return buffer;
 }
 
 void RIOBufferPool::Slot::Free(RIOBuffer* buffer)
 {
-	buffer->Length = 0;
-	buffer->Offset = 0;
-	buffer->size = 0;
+	buffer->Reset();
 
 	std::lock_guard<std::mutex> lock(mutex);
-	buf.push_front(buffer);
+	buf_.push_front(buffer);
 }
 
 std::list<RIOBuffer*> RIOBufferPool::Slot::New()
 {
 	std::list<RIOBuffer*> list;
 
-	char* base = reinterpret_cast<char*>(VirtualAlloc(NULL, GRANULARITY, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+	char* base = reinterpret_cast<char*>(VirtualAlloc(NULL, Static::RIO_BUFFER_GRANULARITY,
+		MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+
 	if (!base)
 	{
 		auto error = GetLastError();
-		PrintConsole(std::string("virtual alloc return nullptr : ") + std::to_string(error));
+		static::PrintConsole(std::string("virtual alloc return nullptr : ") + std::to_string(error));
 		return {};
 	}
 
-	for (int i = 0; i < GRANULARITY / BUFFER_SIZE; ++i)
+	for (int i = 0; i < Static::RIO_BUFFER_GRANULARITY / Static::RIO_BUFFER_SIZE; ++i)
 	{
-		base += i * BUFFER_SIZE;
-		RIO_BUFFERID bufferID = g_RIO.RIORegisterBuffer(base, BUFFER_SIZE);
+		base += i * Static::RIO_BUFFER_SIZE;
+		RIO_BUFFERID buffer_id = Static::RIOFunc()->RIORegisterBuffer(base, Static::RIO_BUFFER_SIZE);
 
-		RIOBuffer* buffer = new RIOBuffer();
-		buffer->BufferId = bufferID;
-		buffer->Length = 0;
-		buffer->Offset = 0;
-		buffer->rawBuf = base;
-
-		list.push_back(buffer);
+		RIOBuffer* buf = new RIOBuffer(buffer_id, base);
+		list.push_back(buf);
 	}
 
 	return list;

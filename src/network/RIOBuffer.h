@@ -2,16 +2,26 @@
 
 namespace network
 {
-enum class REQUEST_TYPE
+class RIOBuffer : public RIO_BUF
 {
-	RIO_READ,
-	RIO_WRITE
-};
+public:
+	RIOBuffer(RIO_BUFFERID buf_id, const char* raw_buf);
 
-struct RIOBuffer : public RIO_BUF
-{
-	char* rawBuf = nullptr;
-	int size = 0;
-	REQUEST_TYPE type;
+	enum RequestType
+	{
+		READ,
+		WRITE
+	};
+
+	int GetSize() const { return size_; }
+	void SetSize(int size) { size_ = size; }
+	void PrepareRead();
+	void PrepareWrite();
+	void Reset();
+
+private:
+	char* raw_buf_{ nullptr };
+	int size_{ 0 };
+	RequestType type_
 };
 }

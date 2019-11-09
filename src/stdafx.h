@@ -22,7 +22,3 @@
 #include <streambuf>
 
 #include <boost\thread\future.hpp>
-
-extern RIO_EXTENSION_FUNCTION_TABLE g_RIO;
-
-void PrintConsole(std::string str);
