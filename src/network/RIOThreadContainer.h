@@ -44,22 +44,23 @@ public:
 
 		void StartWorkThread(int thread_count);
 		void WorkerThread() const;
-		void BindSocket(const std::shared_ptr<RIOSocket>& socket);
+		RIO_RQ BindSocket(const std::shared_ptr<RIOSocket>& socket);
 		void Stop();
 		bool IsRunning() const { return !stop_; }
 
 	private:
 		HANDLE iocp_;
 		RIO_CQ rio_cq_;
+		OVERLAPPED* overlapped_;
 		std::vector<std::thread> thread_;
 		std::mutex mutex_;
 		std::atomic_bool stop_{ true };
 	};
 
-	void WorkerThread(RIO_CQ cq);
-	void StartThread();
-	void StopThread();
-	RIO_RQ BindSocket(SOCKET rawSock, const std::shared_ptr<RIOSocket>& socket);
+	void StartPollingThread(int thread_count);
+	void StartIOCPThread(int thread_count);
+	void Stop();
+	RIO_RQ BindSocket(const std::shared_ptr<RIOSocket>& socket);
 
 private:
 	RIOThreadContainer() = default;
