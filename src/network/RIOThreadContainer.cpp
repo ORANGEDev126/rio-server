@@ -224,21 +224,39 @@ void RIOThreadContainer::IOCPThreadContainer::Stop()
 
 void RIOThreadContainer::StartPollingThread(int thread_count)
 {
+	if (polling_container_.IsRunning())
+		return;
 
+	polling_container_.StartWorkerThread(thread_count);
 }
 
 void RIOThreadContainer::StartIOCPThread(int thread_count)
 {
+	if (iocp_container_.IsRunning())
+		return;
 
+	iocp_container_.StartWorkThread(thread_count);
 }
 
 void RIOThreadContainer::Stop()
 {
+	if (polling_container_.IsRunning())
+		polling_container_.Stop();
 
+	if (iocp_container_.IsRunning())
+		iocp_container_.Stop();
 }
 
 RIO_RQ RIOThreadContainer::BindSocket(const std::shared_ptr<RIOSocket>& socket)
 {
+	
+}
 
+void DoIOCallBack(RIORESULT* result, int size)
+{
+	for (int i = 0; i < size; ++i)
+	{
+
+	}
 }
 }
