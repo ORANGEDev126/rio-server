@@ -5,71 +5,72 @@
 
 namespace network
 {
-RIOStreamBuffer::RIOStreamBuffer(const std::vector<RIOBuffer*>& buffer)
-	: buf(buffer)
-	, currIndex(0)
-	, curr(nullptr)
-	, begin(nullptr)
-	, end(nullptr)
+RIOStreamBuffer::RIOStreamBuffer(const std::vector<std::shared_ptr<RIOBuffer>>& buf)
+	: buf_(buf)
 {
 	if (!buf.empty())
-	{
-		begin = buf.front()->rawBuf;
-		curr = begin;
-		end = buf.back()->rawBuf + buf.back()->size;
-	}
+		Reset();
 }
 
-RIOStreamBuffer::int_type RIOStreamBuffer::underflow()
+int_type RIOStreamBuffer::underflow()
 {
-	if (curr == end)
+	if (curr_ == end_)
 	{
-		return std::char_traits<char>::eof();
-	}
-	else if (curr == buf[currIndex]->rawBuf + buf[currIndex]->size)
-	{
-		if (currIndex = buf.size() - 1)
+		if(curr_index_ == buf_.size() - 1)
 			return std::char_traits<char>::eof();
 
-		curr = buf[++currIndex]->rawBuf;
+		++curr_index_;
+		curr_ = buf_[curr_index_]->GetRawBuf();
+		begin_ = curr_;
+		end_ = begin_ + buf_[curr_index]->GetSize();
 	}
 
 	return traits_type::to_int_type(*curr);
 }
 
-RIOStreamBuffer::int_type RIOStreamBuffer::uflow()
+int_type RIOStreamBuffer::uflow()
 {
 	auto value = underflow();
 	if (value != std::char_traits<char>::eof())
-		++curr;
+		++curr_;
 
 	return value;
 }
 
-RIOStreamBuffer::int_type RIOStreamBuffer::pbackfail(int ch)
+int_type RIOStreamBuffer::pbackfail(int ch)
 {
-	if (curr == begin || (ch != std::char_traits<char>::eof() && ch != curr[-1]))
-		return std::char_traits<char>::eof();
-
-	if (curr == buf[currIndex]->rawBuf)
+	if (curr_ == begin_)
 	{
-		--currIndex;
-		curr = buf[currIndex]->rawBuf + buf[currIndex]->size - 1;
+		if (curr_index_ == 0)
+			return std::char_traits<char>::eof();
+
+		--curr_index_;
+		begin_ = buf_[curr_index_]->GetRawBuf();
+		end_ = begin_ + buf_[curr_index_]->GetSize();
+		curr_ = end_ - 1;
 	}
 	else
 	{
-		--curr;
+		--curr_;
 	}
 
-	return traits_type::to_int_type(*curr);
+	return traits_type::to_int_type(*curr_);
 }
 
 std::streamsize RIOStreamBuffer::showmanyc()
 {
 	int left = 0;
-	for (int i = currIndex + 1; i < buf.size(); ++i)
-		left += buf[i]->size;
+	for (int i = curr_index_ + 1; i < bufs.size(); ++i)
+		left += bufs[i]->GetSize();
 
-	return left + buf[currIndex]->rawBuf + buf[currIndex]->size - curr;
+	return left + end_ - curr_;
+}
+
+void RIOStreamBuffer::Reset()
+{
+	currIndex_ = 0;
+	curr_ = bufs_[0]->GetRawBuf();
+	begin_ = curr_;
+	end_ = begin_ + bufs[0].GetSize();
 }
 }

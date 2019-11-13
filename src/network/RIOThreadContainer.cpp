@@ -249,14 +249,36 @@ void RIOThreadContainer::Stop()
 
 RIO_RQ RIOThreadContainer::BindSocket(const std::shared_ptr<RIOSocket>& socket)
 {
+	if (polling_container_.IsRunning() && !iocp_container_.IsRunning())
+		return polling_container_.BindSocket(socket);
 	
+	if (!polling_container_.IsRunning() && iocp_container_.IsRunning())
+		return iocp_container_.BindSocket(socket);
+
+	if (polling_container_.IsRunning() && iocp_container_.IsRunning())
+	{
+		static uint64_t round_robin = 0;
+
+		if (round_robin++ % 2)
+			return polling_container_.BindSocket(socket);
+		else
+			return iocp_container_.BindSocket(socket);
+	}
+
+	return RIO_INVALID_RQ;
 }
 
 void DoIOCallBack(RIORESULT* result, int size)
 {
 	for (int i = 0; i < size; ++i)
 	{
+		auto status = result[i].Status;
+		auto transferred = result[i].BytesTransferred;
+		auto socket = static_cast<RIOSocket*>(result[i].SocketContext);
+		auto buf = static_cast<RIOBuffer*>(result[i].RequestContext);
 
+		auto shared_socket = socket->PopFromSelfContainer();
+		shared_socket->OnIOCallBack(status, transferred, buf);
 	}
 }
 }

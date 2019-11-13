@@ -40,4 +40,13 @@ void Static::PrintConsole(std::string str)
 	std::unique_lock<std::mutex> lock(mutex);
 	std::cout << str << std::endl << std::flush;
 }
+
+int Static::GetProtoPacketSize(std::istream& stream)
+{
+	int length = 0;
+	if (!stream.read(reinterpret_cast<char*>(&length), 4))
+		return 0;
+
+	return length;
+}
 }
