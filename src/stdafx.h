@@ -20,5 +20,5 @@
 #include <map>
 #include <fstream>
 #include <streambuf>
-
-#include <boost\thread\future.hpp>
+#include <string>
+#include <functional>

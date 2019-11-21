@@ -8,21 +8,19 @@ namespace network
 class RIOServer
 {
 public:
-	RIOServer(int threadCount, int port);
 	~RIOServer();
 
-	void Run();
+	void Run(int port);
 	void Stop();
 
 private:
 	void AcceptLoop();
 
-	std::function<std::shared_ptr<RIOSocket>(SOCKET, const SOCKADDR_IN&)> sockAllocator;
-	SOCKET listenSocket;
-	int port;
-	bool stop;
-	std::unique_ptr<std::thread> acceptThread;
-	std::shared_ptr<RIOThreadContainer> threadContainer;
-	std::shared_ptr<RIOSocketContainer> socketContainer;
+	std::function<std::shared_ptr<RIOSocket>()> sock_allocator_;
+	SOCKET listen_sock_;
+	int port_;
+	bool stop_;
+	std::thread accept_thread_;
+	std::shared_ptr<RIOSocketContainer> container_;
 };
 }

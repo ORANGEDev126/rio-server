@@ -4,15 +4,6 @@
 
 namespace network
 {
-RIOServer::RIOServer(int threadCount, int port)
-	: threadContainer(std::make_shared<RIOThreadContainer>(threadCount))
-	, socketContainer(std::make_shared<RIOSocketContainer>())
-	, port(port)
-	, stop(true)
-{
-
-}
-
 RIOServer::~RIOServer()
 {
 	Stop();
