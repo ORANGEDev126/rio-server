@@ -4,8 +4,8 @@
 
 namespace network
 {
-RIOBuffer::RIOBuffer(RIO_BUFFERID buf_id, const char* raw_buf)
-	: BufferId(buf_id), Offset(0), Length(0), raw_buf_(raw_buf)
+RIOBuffer::RIOBuffer(RIO_BUFFERID buf_id, char* raw_buf)
+	: RIO_BUF{ buf_id, 0, 0 }, raw_buf_(raw_buf)
 {
 
 }

@@ -9,6 +9,7 @@ int Static::RIO_MAX_OUTSTANDING_WRITE = 16;
 int Static::RIO_MAX_OUTSTANDING_READ = 1;
 int Static::RIO_MAX_COMPLETION_QUEUE_SIZE =
 (RIO_MAX_OUTSTANDING_WRITE + RIO_MAX_OUTSTANDING_READ) * 50000;
+RIO_EXTENSION_FUNCTION_TABLE Static::rio_func_table_{ 0, };
 
 void Static::RIOStartUp()
 {
@@ -19,7 +20,7 @@ void Static::RIOStartUp()
 	if (sock == INVALID_SOCKET)
 	{
 		PrintConsole("winsock start up make invalid socket");
-		return
+		return;
 	}
 
 	GUID func_table_id = WSAID_MULTIPLE_RIO;
@@ -41,7 +42,7 @@ void Static::PrintConsole(std::string str)
 	std::cout << str << std::endl << std::flush;
 }
 
-int Static::GetProtoPacketSize(std::istream& stream)
+uint32_t Static::GetProtoPacketSize(std::istream& stream)
 {
 	int length = 0;
 	if (!stream.read(reinterpret_cast<char*>(&length), 4))

@@ -24,22 +24,23 @@ void RIOThreadContainer::PollingThreadContainer::StartWorkerThread(int thread_co
 		if (cq == RIO_INVALID_CQ)
 		{
 			Static::PrintConsole(
-				std::string("create rio cq fail code : ") + std::to_string(WSAGetLastError));
+				std::string("create rio cq fail code : ") + std::to_string(WSAGetLastError()));
 			continue;
 		}
 
 		ThreadSlot slot;
-		slot.cq_ = cq;
-		slot.mutex_ = std::make_shared<std::mutex>();
-		slot.thread_ = std::make_shared<std::thread>([slot.cq_, slot.mutex_, this]()
+		slot.rio_cq_ = cq;
+		auto slot_mutex = std::make_shared<std::mutex>();
+		slot.mutex_ = slot_mutex;
+		slot.thread_ = std::make_shared<std::thread>([this, cq, slot_mutex]()
 		{
-			WorkerThread(slot.cq_, slot.mutex_);
+			WorkerThread(cq, slot_mutex);
 		});
 
-		slots_.push_back(std::move(slot));
+		slot_.push_back(std::move(slot));
 	}
 
-	if (!slots_.empty())
+	if (!slot_.empty())
 		stop_ = false;
 }
 
@@ -60,7 +61,7 @@ void RIOThreadContainer::PollingThreadContainer::WorkerThread(RIO_CQ cq,
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 
-	delete result;
+	delete[] result;
 }
 
 RIO_RQ RIOThreadContainer::PollingThreadContainer::BindSocket(const std::shared_ptr<RIOSocket>& socket)
@@ -71,12 +72,12 @@ RIO_RQ RIOThreadContainer::PollingThreadContainer::BindSocket(const std::shared_
 		return RIO_INVALID_RQ;
 	}
 
-	int index = round_robin_++ % slots_.size();
+	auto index = round_robin_++ % slot_.size();
 
-	std::unique_lock<std::mutex> lock(*slots_[index].mutex_);
+	std::unique_lock<std::mutex> lock(*slot_[index].mutex_);
 	auto rq = Static::RIOFunc()->RIOCreateRequestQueue(socket->GetRawSocket(),
 		Static::RIO_MAX_OUTSTANDING_READ, 1, Static::RIO_MAX_OUTSTANDING_WRITE, 1,
-		slots_[index].cq, slots_[index].cq, socket.get());
+		slot_[index].rio_cq_, slot_[index].rio_cq_, socket.get());
 	lock.unlock();
 
 	if (rq == RIO_INVALID_RQ)
@@ -92,16 +93,16 @@ void RIOThreadContainer::PollingThreadContainer::Stop()
 
 	stop_ = true;
 
-	for (const auto& t : slots_)
+	for (const auto& t : slot_)
 	{
-		Static::RIOFunc()->RIOCloseCompletionQueue(t.cq_);
+		Static::RIOFunc()->RIOCloseCompletionQueue(t.rio_cq_);
 
 		if (t.thread_->joinable())
 			t.thread_->join();
 	}
 }
 
-void RIOThreadContainer::IOCPThreadContainer::~IOCPThreadContainer()
+RIOThreadContainer::IOCPThreadContainer::~IOCPThreadContainer()
 {
 	Stop();
 }
@@ -164,7 +165,7 @@ void RIOThreadContainer::IOCPThreadContainer::WorkerThread()
 		{
 			Static::PrintConsole(
 				std::string("iocp result false error ") + std::to_string(WSAGetLastError()));
-			continue
+			continue;
 		}
 
 		if (!completion_key)
@@ -179,7 +180,7 @@ void RIOThreadContainer::IOCPThreadContainer::WorkerThread()
 		DoIOCallBack(result, result_size);
 	}
 
-	delete result;
+	delete[] result;
 }
 
 RIO_RQ RIOThreadContainer::IOCPThreadContainer::BindSocket(const std::shared_ptr<RIOSocket>& socket)
@@ -190,7 +191,7 @@ RIO_RQ RIOThreadContainer::IOCPThreadContainer::BindSocket(const std::shared_ptr
 		return RIO_INVALID_RQ;
 	}
 
-	std::unique_lock<std::mutex> lock(mutex);
+	std::unique_lock<std::mutex> lock(mutex_);
 	auto rq = Static::RIOFunc()->RIOCreateRequestQueue(socket->GetRawSocket(),
 		Static::RIO_MAX_OUTSTANDING_READ, 1, Static::RIO_MAX_OUTSTANDING_WRITE, 1,
 		rio_cq_, rio_cq_, socket.get());
@@ -213,11 +214,13 @@ void RIOThreadContainer::IOCPThreadContainer::Stop()
 	for (int i = 0; i < thread_.size(); ++i)
 		PostQueuedCompletionStatus(iocp_, 0, 0, overlapped_);
 
-	for (const auto& t : thread_)
+	for (auto& t : thread_)
 	{
 		if (t.joinable())
-			t.joinable();
+			t.join();
 	}
+
+	Static::RIOFunc()->RIOCloseCompletionQueue(rio_cq_);
 
 	delete overlapped_;
 }
@@ -274,8 +277,8 @@ void DoIOCallBack(RIORESULT* result, int size)
 	{
 		auto status = result[i].Status;
 		auto transferred = result[i].BytesTransferred;
-		auto socket = static_cast<RIOSocket*>(result[i].SocketContext);
-		auto buf = static_cast<RIOBuffer*>(result[i].RequestContext);
+		auto socket = reinterpret_cast<RIOSocket*>(result[i].SocketContext);
+		auto buf = reinterpret_cast<RIOBuffer*>(result[i].RequestContext);
 
 		auto shared_socket = socket->PopFromSelfContainer();
 		shared_socket->OnIOCallBack(status, transferred, buf);

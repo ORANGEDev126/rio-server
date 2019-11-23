@@ -26,15 +26,15 @@ public:
 		std::mutex mutex_;
 	};
 
-	RIOBufferPool();
-
 	std::shared_ptr<RIOBuffer> Alloc();
 	
 private:
+	RIOBufferPool() = default;
+
 	void Free(RIOBuffer* buffer);
 
-	std::vector<Slot> slots_;
-	std::atomic_int64_t allocCount_;
-	std::atomic_int64_t freeCount_;
+	std::vector<Slot> slots_{ 16 };
+	std::atomic_int64_t allocCount_{ 0 };
+	std::atomic_int64_t freeCount_{ 0 };
 };
 }

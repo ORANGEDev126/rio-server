@@ -6,13 +6,6 @@
 namespace network
 {
 
-RIOBufferPool::RIOBufferPool()
-	: allocCount(0)
-	, freeCount(0)
-	, slots(16)
-{
-}
-
 std::shared_ptr<RIOBuffer> RIOBufferPool::Alloc()
 {
 	auto index = allocCount_.fetch_add(1) % slots_.size();
@@ -50,7 +43,7 @@ void RIOBufferPool::Slot::Free(RIOBuffer* buffer)
 {
 	buffer->Reset();
 
-	std::lock_guard<std::mutex> lock(mutex);
+	std::lock_guard<std::mutex> lock(mutex_);
 	buf_.push_front(buffer);
 }
 
@@ -64,7 +57,7 @@ std::list<RIOBuffer*> RIOBufferPool::Slot::New()
 	if (!base)
 	{
 		auto error = GetLastError();
-		static::PrintConsole(std::string("virtual alloc return nullptr : ") + std::to_string(error));
+		Static::PrintConsole(std::string("virtual alloc return nullptr : ") + std::to_string(error));
 		return {};
 	}
 

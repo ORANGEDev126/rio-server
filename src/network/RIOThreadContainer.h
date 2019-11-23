@@ -18,7 +18,7 @@ public:
 	public:
 		struct ThreadSlot
 		{
-			RIO_CQ cq_;
+			RIO_CQ rio_cq_{ RIO_INVALID_CQ };
 			std::shared_ptr<std::mutex> mutex_;
 			std::shared_ptr<std::thread> thread_;
 		};
@@ -43,14 +43,14 @@ public:
 		~IOCPThreadContainer();
 
 		void StartWorkThread(int thread_count);
-		void WorkerThread() const;
+		void WorkerThread();
 		RIO_RQ BindSocket(const std::shared_ptr<RIOSocket>& socket);
 		void Stop();
 		bool IsRunning() const { return !stop_; }
 
 	private:
 		HANDLE iocp_;
-		RIO_CQ rio_cq_;
+		RIO_CQ rio_cq_{ RIO_INVALID_CQ };
 		OVERLAPPED* overlapped_;
 		std::vector<std::thread> thread_;
 		std::mutex mutex_;

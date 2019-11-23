@@ -16,7 +16,9 @@ public:
 		CLOSE_TRANSFERRED_SIZE_ZERO,
 		CLOSE_INVALID_PACKET_LENGTH,
 		CLOSE_SEND_FAIL_IN_WRITECALLBACK,
-		CLOSE_READ_FAIL
+		CLOSE_READ_FAIL,
+		CLOSE_SERVER_STOP,
+		CLOSE_DESTRUCT_SOCKET_CONTAINER
 	};
 
 	RIOSocket() = default;
@@ -26,7 +28,7 @@ public:
 		const std::shared_ptr<RIOSocketContainer>& container);
 	void OnIOCallBack(int status, int transferred, RIOBuffer* buf);
 	void Read();
-	bool Write(const std::vector<std::shared_ptr<RIOBuffer>& bufs);
+	bool Write(const std::vector<std::shared_ptr<RIOBuffer>>& bufs);
 	void Close(CloseReason reason, std::string str);
 	SOCKET GetRawSocket() const;
 	std::shared_ptr<RIOSocket> PopFromSelfContainer();
@@ -42,14 +44,14 @@ private:
 	virtual void OnConnected() = 0;
 	virtual void OnClose(CloseReason reason, std::string str) = 0;
 
-	std::atomic<SOCKET> raw_sock_{ INVALID_SOCKET; };
+	SOCKET raw_sock_{ INVALID_SOCKET };
 	SOCKADDR_IN addr_;
-	RIO_RQ rio_req_queue_{ RIO_INVALID_RQ };
+	std::atomic<RIO_RQ> rio_req_queue_{ RIO_INVALID_RQ };
 	std::weak_ptr<RIOSocketContainer> container_;
 	std::mutex req_mutex_;
 	std::vector<std::shared_ptr<RIOBuffer>> read_buf_;
 	std::list<std::shared_ptr<RIOBuffer>> write_buf_;
 	int outstanding_write_{ 0 };
-	std::vector<std::shared_ptr<RIOSocket>> self_container_;
+	std::list<std::shared_ptr<RIOSocket>> self_container_;
 };
 }

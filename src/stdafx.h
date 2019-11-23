@@ -7,7 +7,6 @@
 
 #include <WinSock2.h>
 #include <MSWSock.h>
-#include <Windows.h>
 
 #include <unordered_map>
 #include <memory>

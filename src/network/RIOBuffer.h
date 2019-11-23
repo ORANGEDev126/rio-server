@@ -1,11 +1,13 @@
 #pragma once
 
+#include "RIOStatic.h"
+
 namespace network
 {
 class RIOBuffer : public RIO_BUF
 {
 public:
-	RIOBuffer(RIO_BUFFERID buf_id, const char* raw_buf);
+	RIOBuffer(RIO_BUFFERID buf_id, char* raw_buf);
 
 	enum RequestType
 	{
@@ -26,6 +28,6 @@ public:
 private:
 	char* raw_buf_{ nullptr };
 	int size_{ 0 };
-	RequestType type_
+	RequestType type_;
 };
 }

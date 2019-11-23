@@ -5,6 +5,7 @@
 #include "RIOBufferPool.h"
 #include "RIOStreamBuffer.h"
 #include "RIOStatic.h"
+#include "RIOSocketContainer.h"
 
 namespace network
 {
@@ -34,7 +35,7 @@ void RIOSocket::OnIOCallBack(int status, int transferred, RIOBuffer* buf)
 	}
 	else
 	{
-		if (buf->IsReadRequest)
+		if (buf->IsReadRequest())
 			OnReadCallBack(buf, transferred);
 		else if(buf->IsWriteRequest())
 			OnWriteCallBack(buf, transferred);
@@ -50,25 +51,25 @@ void RIOSocket::OnReadCallBack(RIOBuffer* buf, int transferred)
 		RIOStreamBuffer stream_buf(read_buf_);
 		std::istream packet(&stream_buf);
 
-		int packet_length = Static::GetProtoPacketSize(packet);
-		int curr_length = static_cast<int>(streamBuf.showmanyc());
+		auto packet_length = Static::GetProtoPacketSize(packet);
+		auto curr_length = stream_buf.showmanyc();
 		if (packet_length == 0 || packet_length < curr_length)
 			break;
 
-		if (packet_length < 0 || packet_length > PROTO_MAX_PACKET_LENGTH)
+		if (packet_length > Static::PROTO_MAX_PACKET_LENGTH)
 		{
 			Close(CLOSE_INVALID_PACKET_LENGTH, "");
 			return;
 		}
 
-		int left = currLength - packetLength;
-		buf->SetSize(buf->GetSize() - left);
+		auto left = curr_length - packet_length;
+		buf->SetSize(static_cast<int>(buf->GetSize() - left));
 
 		OnRead(packet);
 		
-		std::copy(buf->GetRawBuf() + buffer->size,
-				  buf->GetRawBuf() + buffer->size + left, buf->GetRawBuf());
-		buf->SetSize(left);
+		std::copy(buf->GetRawBuf() + buf->GetSize(),
+				  buf->GetRawBuf() + buf->GetSize() + left, buf->GetRawBuf());
+		buf->SetSize(static_cast<int>(left));
 
 		FreeReadBufUntilLast();
 	}
@@ -82,7 +83,7 @@ bool RIOSocket::Write(const std::vector<std::shared_ptr<RIOBuffer>>& bufs)
 	for (const auto& buf : bufs)
 	{
 		if (!WriteBuf(buf))
-			return false
+			return false;
 	}
 
 	return true;
@@ -113,7 +114,7 @@ bool RIOSocket::WriteBuf(const std::shared_ptr<RIOBuffer>& buf)
 		{
 			std::copy(buf->GetRawBuf(), buf->GetRawBuf() + buf->GetSize(),
 				write_buf_.back()->GetRawBuf());
-			write_buf_.back()->SetSize(write_bufs.back()->GetSize() + buf->GetSize());
+			write_buf_.back()->SetSize(write_buf_.back()->GetSize() + buf->GetSize());
 		}
 		else
 		{
@@ -151,8 +152,8 @@ void RIOSocket::OnWriteCallBack(RIOBuffer* buf, int transferred)
 
 	(*iter)->PrepareWrite();
 
-	if (!Static::RIOFunc()->RIOSend(rio_req_queue_, (*iter).get(), 1, NULL, (*iter).get() &&
-		WSAGetLastError() != WSA_IO_PENDING))
+	if (!Static::RIOFunc()->RIOSend(rio_req_queue_, (*iter).get(), 1, NULL, (*iter).get()) &&
+		WSAGetLastError() != WSA_IO_PENDING)
 	{
 		Static::PrintConsole(std::string("rio send fail in write call back error ") +
 			std::to_string(WSAGetLastError()));
@@ -170,8 +171,8 @@ void RIOSocket::FreeReadBufUntilLast()
 		return;
 
 	auto last = read_buf_.back();
-	readBuf.clear();
-	readBuf.push_back(last);
+	read_buf_.clear();
+	read_buf_.push_back(last);
 }
 
 void RIOSocket::Read()
@@ -191,35 +192,35 @@ void RIOSocket::Read()
 		return;
 	}
 
-	selfContainer.push_back(shared_from_this());
+	self_container_.push_back(shared_from_this());
 }
 
-void RIOSocket::Close(loseReason reason, std::string str)
+void RIOSocket::Close(CloseReason reason, std::string str)
 {
-	auto before = rawSocket.exchange(INVALID_SOCKET);
-	if (before != INVALID_SOCKET)
+	auto before = rio_req_queue_.exchange(RIO_INVALID_RQ);
+	if (before != RIO_INVALID_RQ)
 	{
-		if (auto socketContainer = container.lock())
-			socketContainer->DeleteSocket(shared_from_this());
+		if (auto container = container_.lock())
+			container->DeleteSocket(shared_from_this());
 
-		closesocket(before);
+		closesocket(raw_sock_);
 		OnClose(reason, str);
 	}
 }
 
 SOCKET RIOSocket::GetRawSocket() const
 {
-	return rawSocket.load();
+	return raw_sock_;
 }
 
 std::shared_ptr<RIOSocket> RIOSocket::PopFromSelfContainer()
 {
-	std::lock_guard<std::mutex> lock(requestLock);
-	if (selfContainer.empty())
+	std::lock_guard<std::mutex> lock(req_mutex_);
+	if (self_container_.empty())
 		return nullptr;
 
-	auto pSocket = selfContainer.front();
-	selfContainer.pop_front();
+	auto pSocket = self_container_.front();
+	self_container_.pop_front();
 
 	return pSocket;
 }

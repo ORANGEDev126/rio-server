@@ -1,7 +1,8 @@
 #pragma once
 
-#include "RIOThreadContainer.h"
-#include "RIOSocketContainer.h"
+#include "RIOSocket.h"
+
+namespace network { class RIOSocketContainer; }
 
 namespace network
 {

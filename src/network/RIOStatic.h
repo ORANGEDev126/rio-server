@@ -15,7 +15,7 @@ public:
 	static void RIOStartUp();
 	static void PrintConsole(std::string str);
 	static RIO_EXTENSION_FUNCTION_TABLE* RIOFunc() { return &rio_func_table_; }
-	static int GetProtoPacketSize(std::istream& stream);
+	static uint32_t GetProtoPacketSize(std::istream& stream);
 
 private:
 	static RIO_EXTENSION_FUNCTION_TABLE rio_func_table_;
