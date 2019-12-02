@@ -72,6 +72,9 @@ void RIOSocket::OnReadCallBack(RIOBuffer* buf, int transferred)
 		buf->SetSize(static_cast<int>(left));
 
 		FreeReadBufUntilLast();
+		
+		if (left == 0)
+			break;
 	}
 
 	Read();
@@ -204,7 +207,7 @@ void RIOSocket::Close(CloseReason reason, std::string str)
 			container->DeleteSocket(shared_from_this());
 
 		closesocket(raw_sock_);
-		OnClose(reason, str);
+		OnDisconnected(reason, str);
 	}
 }
 

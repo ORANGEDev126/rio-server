@@ -30,4 +30,13 @@ void RIOBuffer::Reset()
 	Length = 0;
 	size_ = 0;
 }
+
+bool RIOBuffer::PutChar(char c)
+{
+	if (IsFull())
+		return false;
+
+	raw_buf_[size_++] = c;
+	return true;
+}
 }

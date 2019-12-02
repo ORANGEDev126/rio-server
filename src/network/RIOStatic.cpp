@@ -1,6 +1,9 @@
 #include "stdafx.h"
 #include "RIOStatic.h"
 #include "RIOThreadContainer.h"
+#include "RIOBufferPool.h"
+#include "RIOBuffer.h"
+#include "RIOSocket.h"
 
 namespace network
 {
@@ -45,9 +48,26 @@ void Static::PrintConsole(std::string str)
 uint32_t Static::GetProtoPacketSize(std::istream& stream)
 {
 	int length = 0;
+
 	if (!stream.read(reinterpret_cast<char*>(&length), 4))
 		return 0;
 
 	return length;
+}
+
+void Static::SendRandomChar(const std::shared_ptr<RIOSocket>& socket, int length)
+{
+	std::vector<std::shared_ptr<RIOBuffer>> buf_group;
+
+	for (int i = 0; i < length; ++i)
+	{
+		if (buf_group.empty() || buf_group.back()->IsFull())
+			buf_group.push_back(RIOBufferPool::GetInstance()->Alloc());
+
+		auto last_buf = buf_group.back();
+		last_buf->PutChar((std::rand() % 57) + 65);
+	}
+
+	socket->Write(buf_group);
 }
 }

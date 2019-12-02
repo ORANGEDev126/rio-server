@@ -23,6 +23,7 @@ public:
 
 	RIOSocket() = default;
 	virtual ~RIOSocket() = default;
+	RIOSocket(const RIOSocket&) = delete;
 
 	void Initialize(SOCKET sock, SOCKADDR_IN addr, RIO_RQ queue,
 		const std::shared_ptr<RIOSocketContainer>& container);
@@ -41,8 +42,8 @@ private:
 	std::shared_ptr<RIOBuffer> PopFromWriteBuf(RIOBuffer* buf);
 
 	virtual void OnRead(std::istream& packet) = 0;
-	virtual void OnConnected() = 0;
-	virtual void OnClose(CloseReason reason, std::string str) = 0;
+	virtual void OnConnected() { }
+	virtual void OnDisconnected(CloseReason reason, std::string str) { }
 
 	SOCKET raw_sock_{ INVALID_SOCKET };
 	SOCKADDR_IN addr_;

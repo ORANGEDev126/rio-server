@@ -24,6 +24,7 @@ public:
 	bool IsReadRequest() const { return type_ == READ; }
 	bool IsWriteRequest() const { return type_ == WRITE; }
 	bool IsFull() const { return size_ == Static::RIO_BUFFER_SIZE; }
+	bool PutChar(char c);
 
 private:
 	char* raw_buf_{ nullptr };

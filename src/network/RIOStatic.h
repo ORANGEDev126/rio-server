@@ -1,5 +1,7 @@
 #pragma once
 
+namespace network { class RIOSocket; }
+
 namespace network
 {
 class Static
@@ -16,6 +18,7 @@ public:
 	static void PrintConsole(std::string str);
 	static RIO_EXTENSION_FUNCTION_TABLE* RIOFunc() { return &rio_func_table_; }
 	static uint32_t GetProtoPacketSize(std::istream& stream);
+	static void SendRandomChar(const std::shared_ptr<RIOSocket>& socket, int length);
 
 private:
 	static RIO_EXTENSION_FUNCTION_TABLE rio_func_table_;
