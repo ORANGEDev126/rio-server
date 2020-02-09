@@ -62,9 +62,7 @@ void RIOSocket::OnReadCallBack(RIOBuffer* buf, int transferred)
 			break;
 
 		if (!ValidPacketLength(*packet_length))
-		{
 			Close("invalid packet length");
-		}
 
 		if (*packet_length < curr_length)
 			break;
