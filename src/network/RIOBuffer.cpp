@@ -14,7 +14,7 @@ void RIOBuffer::PrepareRead()
 {
 	type_ = READ;
 	Offset = size_;
-	Length = Static::RIO_BUFFER_SIZE - size_;
+	Length = RIOStatic::RIO_BUFFER_SIZE - size_;
 }
 
 void RIOBuffer::PrepareWrite()
