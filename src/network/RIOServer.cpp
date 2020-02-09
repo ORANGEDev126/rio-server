@@ -12,7 +12,7 @@ RIOServer::~RIOServer()
 	Stop();
 }
 
-void RIOServer::Run(int port)
+void RIOServer::Run(int port, int thread_count, int max_conn)
 {
 	port_ = port;
 
@@ -20,7 +20,7 @@ void RIOServer::Run(int port)
 	if (listen_sock_ == INVALID_SOCKET)
 	{
 		auto error = WSAGetLastError();
-		Static::PrintConsole(std::string("create listen socket error ") + std::to_string(error));
+		RIOStatic::PrintConsole(std::string("create listen socket error ") + std::to_string(error));
 		return;
 	}
 
@@ -32,9 +32,12 @@ void RIOServer::Run(int port)
 	if (bind(listen_sock_, reinterpret_cast<SOCKADDR*>(&addr), sizeof(addr)) == SOCKET_ERROR)
 	{
 		auto error = WSAGetLastError();
-		Static::PrintConsole(std::string("bind socket error ") + std::to_string(error));
+		RIOStatic::PrintConsole(std::string("bind socket error ") + std::to_string(error));
 		return;
 	}
+
+	thread_container_ = std::make_shared<RIOThreadContainer>();
+	thread_container_->StartIOCPThread(thread_count, max_conn);
 
 	accept_thread_ = std::thread([this]()
 	{
@@ -47,8 +50,8 @@ void RIOServer::Stop()
 	stop_ = true;
 	closesocket(listen_sock_);
 
-	for (auto& socket : container_->GetAll())
-		socket->Close(RIOSocket::CloseReason::CLOSE_SERVER_STOP, 0);
+	for (auto& socket : socket_container_->GetAll())
+		socket->Close("rio server stop called");
 
 	accept_thread_.join();
 }
@@ -58,12 +61,12 @@ void RIOServer::AcceptLoop()
 	if (listen(listen_sock_, SOMAXCONN) == SOCKET_ERROR)
 	{
 		auto error = WSAGetLastError();
-		Static::PrintConsole(std::string("listen error ") + std::to_string(error));
+		RIOStatic::PrintConsole(std::string("listen error ") + std::to_string(error));
 		return;
 	}
 
 	stop_ = false;
-	Static::PrintConsole(std::string("start server port : ") + std::to_string(port_));
+	RIOStatic::PrintConsole(std::string("start server port : ") + std::to_string(port_));
 
 	for (;;)
 	{
@@ -75,7 +78,7 @@ void RIOServer::AcceptLoop()
 		if (accepted_sock == INVALID_SOCKET)
 		{
 			auto error = WSAGetLastError();
-			Static::PrintConsole(std::string("invalid accepted socket ") + std::to_string(error));
+			RIOStatic::PrintConsole(std::string("invalid accepted socket ") + std::to_string(error));
 			continue;
 		}
 
@@ -87,11 +90,11 @@ void RIOServer::AcceptLoop()
 		if (!socket)
 			continue;
 		
-		RIO_RQ rq = RIOThreadContainer::GetInstance()->BindSocket(socket);
+		RIO_RQ rq = thread_container_->BindSocket(socket);
 		if (rq != RIO_INVALID_RQ)
 		{
-			container_->AddSocket(socket);
-			socket->Initialize(accepted_sock, addr, rq, container_);
+			socket_container_->AddSocket(socket);
+			socket->Initialize(accepted_sock, addr, rq, socket_container_);
 		}
 	}
 }

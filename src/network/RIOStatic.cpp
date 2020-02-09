@@ -5,13 +5,9 @@
 namespace network
 {
 
-int Static::RIO_MAX_OUTSTANDING_WRITE = 16;
-int Static::RIO_MAX_OUTSTANDING_READ = 1;
-int Static::RIO_MAX_COMPLETION_QUEUE_SIZE =
-(RIO_MAX_OUTSTANDING_WRITE + RIO_MAX_OUTSTANDING_READ) * 50000;
-RIO_EXTENSION_FUNCTION_TABLE Static::rio_func_table_{ 0, };
+RIO_EXTENSION_FUNCTION_TABLE RIOStatic::rio_func_table_{ 0, };
 
-void Static::RIOStartUp()
+void RIOStatic::RIOStartUp()
 {
 	WSADATA wsa_data;
 	WSAStartup(MAKEWORD(2, 2), &wsa_data);
@@ -35,19 +31,10 @@ void Static::RIOStartUp()
 	}
 }
 
-void Static::PrintConsole(std::string str)
+void RIOStatic::PrintConsole(std::string str)
 {
 	static std::mutex mutex;
 	std::unique_lock<std::mutex> lock(mutex);
 	std::cout << str << std::endl << std::flush;
-}
-
-uint32_t Static::GetProtoPacketSize(std::istream& stream)
-{
-	int length = 0;
-	if (!stream.read(reinterpret_cast<char*>(&length), 4))
-		return 0;
-
-	return length;
 }
 }

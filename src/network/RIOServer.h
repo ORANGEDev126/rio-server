@@ -3,6 +3,7 @@
 #include "RIOSocket.h"
 
 namespace network { class RIOSocketContainer; }
+namespace network { class RIOThreadContainer; }
 
 namespace network
 {
@@ -11,7 +12,7 @@ class RIOServer
 public:
 	~RIOServer();
 
-	void Run(int port);
+	void Run(int port, int thread_count, int max_conn);
 	void Stop();
 
 private:
@@ -22,6 +23,7 @@ private:
 	int port_;
 	bool stop_;
 	std::thread accept_thread_;
-	std::shared_ptr<RIOSocketContainer> container_;
+	std::shared_ptr<RIOSocketContainer> socket_container_;
+	std::shared_ptr<RIOThreadContainer> thread_container_;
 };
 }

@@ -11,7 +11,7 @@ RIOSocketContainer::~RIOSocketContainer()
 	lock.unlock();
 
 	for (auto& socket : temp)
-		socket->Close(RIOSocket::CLOSE_DESTRUCT_SOCKET_CONTAINER, 0);
+		socket->Close("destruct socket container");
 }
 
 void RIOSocketContainer::AddSocket(const std::shared_ptr<RIOSocket>& socket)

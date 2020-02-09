@@ -7,12 +7,6 @@ namespace network
 class RIOThreadContainer
 {
 public:
-	static RIOThreadContainer* GetInstance()
-	{
-		static RIOThreadContainer container;
-		return &container;
-	}
-
 	class PollingThreadContainer
 	{
 	public:
@@ -25,8 +19,8 @@ public:
 
 		~PollingThreadContainer();
 
-		void StartWorkerThread(int thread_count);
-		void WorkerThread(RIO_CQ cq, std::shared_ptr<std::mutex> mutex);
+		void StartWorkerThread(int thread_count, int max_conn);
+		void WorkerThread(RIO_CQ cq, std::shared_ptr<std::mutex> mutex, int completion_queue_size);
 		RIO_RQ BindSocket(const std::shared_ptr<RIOSocket>& socket);
 		void Stop();
 		bool IsRunning() const { return !stop_; }
@@ -42,8 +36,8 @@ public:
 	public:
 		~IOCPThreadContainer();
 
-		void StartWorkThread(int thread_count);
-		void WorkerThread();
+		void StartWorkThread(int thread_count, int max_conn);
+		void WorkerThread(int completion_queue_size);
 		RIO_RQ BindSocket(const std::shared_ptr<RIOSocket>& socket);
 		void Stop();
 		bool IsRunning() const { return !stop_; }
@@ -57,15 +51,15 @@ public:
 		std::atomic_bool stop_{ true };
 	};
 
-	void StartPollingThread(int thread_count);
-	void StartIOCPThread(int thread_count);
+	RIOThreadContainer() = default;
+	~RIOThreadContainer() = default;
+
+	void StartPollingThread(int thread_count, int max_conn);
+	void StartIOCPThread(int thread_count, int max_conn);
 	void Stop();
 	RIO_RQ BindSocket(const std::shared_ptr<RIOSocket>& socket);
 
 private:
-	RIOThreadContainer() = default;
-	~RIOThreadContainer() = default;
-
 	PollingThreadContainer polling_container_;
 	IOCPThreadContainer iocp_container_;
 };

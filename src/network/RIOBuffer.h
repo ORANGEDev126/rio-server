@@ -23,7 +23,7 @@ public:
 	void Reset();
 	bool IsReadRequest() const { return type_ == READ; }
 	bool IsWriteRequest() const { return type_ == WRITE; }
-	bool IsFull() const { return size_ == Static::RIO_BUFFER_SIZE; }
+	bool IsFull() const { return size_ == RIOStatic::RIO_BUFFER_SIZE; }
 
 private:
 	char* raw_buf_{ nullptr };

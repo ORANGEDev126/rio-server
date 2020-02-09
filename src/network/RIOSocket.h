@@ -10,18 +10,7 @@ namespace network
 class RIOSocket : public std::enable_shared_from_this<RIOSocket>
 {
 public:
-	enum CloseReason
-	{
-		CLOSE_CALLBACK_STATUS_ERROR,
-		CLOSE_TRANSFERRED_SIZE_ZERO,
-		CLOSE_INVALID_PACKET_LENGTH,
-		CLOSE_SEND_FAIL_IN_WRITECALLBACK,
-		CLOSE_READ_FAIL,
-		CLOSE_SERVER_STOP,
-		CLOSE_DESTRUCT_SOCKET_CONTAINER
-	};
-
-	RIOSocket() = default;
+	RIOSocket(std::function<std::optional<uint32_t>(std::istream&)> length_func);
 	virtual ~RIOSocket() = default;
 
 	void Initialize(SOCKET sock, SOCKADDR_IN addr, RIO_RQ queue,
@@ -29,7 +18,7 @@ public:
 	void OnIOCallBack(int status, int transferred, RIOBuffer* buf);
 	void Read();
 	bool Write(const std::vector<std::shared_ptr<RIOBuffer>>& bufs);
-	void Close(CloseReason reason, std::string str);
+	void Close(std::string close_reason);
 	SOCKET GetRawSocket() const;
 	std::shared_ptr<RIOSocket> PopFromSelfContainer();
 
@@ -39,10 +28,12 @@ private:
 	void FreeReadBufUntilLast();
 	bool WriteBuf(const std::shared_ptr<RIOBuffer>& buf);
 	std::shared_ptr<RIOBuffer> PopFromWriteBuf(RIOBuffer* buf);
+	std::string WSAErrorToString() const;
 
 	virtual void OnRead(std::istream& packet) = 0;
 	virtual void OnConnected() = 0;
-	virtual void OnClose(CloseReason reason, std::string str) = 0;
+	virtual void OnClose(std::string close_reason) = 0;
+	virtual bool ValidPacketLength(int packet_length) = 0;
 
 	SOCKET raw_sock_{ INVALID_SOCKET };
 	SOCKADDR_IN addr_;
@@ -53,5 +44,6 @@ private:
 	std::list<std::shared_ptr<RIOBuffer>> write_buf_;
 	int outstanding_write_{ 0 };
 	std::list<std::shared_ptr<RIOSocket>> self_container_;
+	std::function<std::optional<uint32_t>(std::istream&)> packet_length_func_;
 };
 }

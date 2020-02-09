@@ -6,24 +6,25 @@
 
 namespace network
 {
-
 RIOThreadContainer::PollingThreadContainer::~PollingThreadContainer()
 {
 	Stop();
 }
 
-void RIOThreadContainer::PollingThreadContainer::StartWorkerThread(int thread_count)
+void RIOThreadContainer::PollingThreadContainer::StartWorkerThread(int thread_count, int max_conn)
 {
 	if (IsRunning())
 		return;
 
+	auto completion_queue_size = RIOStatic::CalculateRIOCompletionQueueSize(max_conn);
+
 	for (int i = 0; i < thread_count; ++i)
 	{
-		auto cq = Static::RIOFunc()->RIOCreateCompletionQueue(
-			Static::RIO_MAX_COMPLETION_QUEUE_SIZE, NULL);
+		auto cq = RIOStatic::RIOFunc()->RIOCreateCompletionQueue(
+			completion_queue_size, NULL);
 		if (cq == RIO_INVALID_CQ)
 		{
-			Static::PrintConsole(
+			RIOStatic::PrintConsole(
 				std::string("create rio cq fail code : ") + std::to_string(WSAGetLastError()));
 			continue;
 		}
@@ -32,9 +33,9 @@ void RIOThreadContainer::PollingThreadContainer::StartWorkerThread(int thread_co
 		slot.rio_cq_ = cq;
 		auto slot_mutex = std::make_shared<std::mutex>();
 		slot.mutex_ = slot_mutex;
-		slot.thread_ = std::make_shared<std::thread>([this, cq, slot_mutex]()
+		slot.thread_ = std::make_shared<std::thread>([this, cq, slot_mutex, completion_queue_size]()
 		{
-			WorkerThread(cq, slot_mutex);
+			WorkerThread(cq, slot_mutex, completion_queue_size);
 		});
 
 		slot_.push_back(std::move(slot));
@@ -45,15 +46,15 @@ void RIOThreadContainer::PollingThreadContainer::StartWorkerThread(int thread_co
 }
 
 void RIOThreadContainer::PollingThreadContainer::WorkerThread(RIO_CQ cq,
-	std::shared_ptr<std::mutex> mutex)
+	std::shared_ptr<std::mutex> mutex, int completion_queue_size)
 {
-	RIORESULT* result = new RIORESULT[Static::RIO_MAX_COMPLETION_QUEUE_SIZE];
+	RIORESULT* result = new RIORESULT[completion_queue_size];
 
 	while (!stop_)
 	{
 		std::unique_lock<std::mutex> lock(*mutex);
-		int result_size = Static::RIOFunc()->RIODequeueCompletion(cq, result,
-			Static::RIO_MAX_COMPLETION_QUEUE_SIZE);
+		int result_size = RIOStatic::RIOFunc()->RIODequeueCompletion(cq, result,
+			completion_queue_size);
 		lock.unlock();
 
 		DoIOCallBack(result, result_size);
@@ -68,20 +69,20 @@ RIO_RQ RIOThreadContainer::PollingThreadContainer::BindSocket(const std::shared_
 {
 	if (!IsRunning())
 	{
-		Static::PrintConsole("worker not running bind socket fail");
+		RIOStatic::PrintConsole("worker not running bind socket fail");
 		return RIO_INVALID_RQ;
 	}
 
 	auto index = round_robin_++ % slot_.size();
 
 	std::unique_lock<std::mutex> lock(*slot_[index].mutex_);
-	auto rq = Static::RIOFunc()->RIOCreateRequestQueue(socket->GetRawSocket(),
-		Static::RIO_MAX_OUTSTANDING_READ, 1, Static::RIO_MAX_OUTSTANDING_WRITE, 1,
+	auto rq = RIOStatic::RIOFunc()->RIOCreateRequestQueue(socket->GetRawSocket(),
+		RIOStatic::RIO_MAX_OUTSTANDING_READ, 1, RIOStatic::RIO_MAX_OUTSTANDING_WRITE, 1,
 		slot_[index].rio_cq_, slot_[index].rio_cq_, socket.get());
 	lock.unlock();
 
 	if (rq == RIO_INVALID_RQ)
-		Static::PrintConsole("create request queue fail, rq invalid");
+		RIOStatic::PrintConsole("create request queue fail, rq invalid");
 
 	return rq;
 }
@@ -95,7 +96,7 @@ void RIOThreadContainer::PollingThreadContainer::Stop()
 
 	for (const auto& t : slot_)
 	{
-		Static::RIOFunc()->RIOCloseCompletionQueue(t.rio_cq_);
+		RIOStatic::RIOFunc()->RIOCloseCompletionQueue(t.rio_cq_);
 
 		if (t.thread_->joinable())
 			t.thread_->join();
@@ -107,7 +108,7 @@ RIOThreadContainer::IOCPThreadContainer::~IOCPThreadContainer()
 	Stop();
 }
 
-void RIOThreadContainer::IOCPThreadContainer::StartWorkThread(int thread_count)
+void RIOThreadContainer::IOCPThreadContainer::StartWorkThread(int thread_count, int max_conn)
 {
 	if (IsRunning())
 		return;
@@ -115,10 +116,12 @@ void RIOThreadContainer::IOCPThreadContainer::StartWorkThread(int thread_count)
 	iocp_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
 	if (iocp_ == NULL)
 	{
-		Static::PrintConsole(
+		RIOStatic::PrintConsole(
 			std::string("create io completion port fail ") + std::to_string(WSAGetLastError()));
 		return;
 	}
+
+	auto completion_queue_size = RIOStatic::CalculateRIOCompletionQueueSize(max_conn);
 
 	overlapped_ = new OVERLAPPED{};
 	RIO_NOTIFICATION_COMPLETION noti_completion;
@@ -126,22 +129,22 @@ void RIOThreadContainer::IOCPThreadContainer::StartWorkThread(int thread_count)
 	noti_completion.Iocp.CompletionKey = reinterpret_cast<void*>(1);
 	noti_completion.Iocp.Overlapped = overlapped_;
 
-	rio_cq_ = Static::RIOFunc()->RIOCreateCompletionQueue(
-		Static::RIO_MAX_COMPLETION_QUEUE_SIZE, &noti_completion);
+	rio_cq_ = RIOStatic::RIOFunc()->RIOCreateCompletionQueue(
+		completion_queue_size, &noti_completion);
 	if (rio_cq_ == RIO_INVALID_CQ)
 	{
-		Static::PrintConsole(
+		RIOStatic::PrintConsole(
 			std::string("create rio completion queue fail " + std::to_string(WSAGetLastError())));
 		return;
 	}
 
-	Static::RIOFunc()->RIONotify(rio_cq_);
+	RIOStatic::RIOFunc()->RIONotify(rio_cq_);
 
 	for (int i = 0; i < thread_count; ++i)
 	{
-		thread_.push_back(std::thread([this]()
+		thread_.push_back(std::thread([this, completion_queue_size]()
 		{
-			WorkerThread();
+			WorkerThread(completion_queue_size);
 		}));
 	}
 
@@ -149,9 +152,9 @@ void RIOThreadContainer::IOCPThreadContainer::StartWorkThread(int thread_count)
 		stop_ = false;
 }
 
-void RIOThreadContainer::IOCPThreadContainer::WorkerThread()
+void RIOThreadContainer::IOCPThreadContainer::WorkerThread(int completion_queue_size)
 {
-	RIORESULT* result = new RIORESULT[Static::RIO_MAX_COMPLETION_QUEUE_SIZE];
+	RIORESULT* result = new RIORESULT[completion_queue_size];
 	DWORD transferred = 0;
 	void* completion_key = nullptr;
 	OVERLAPPED* overlapped = nullptr;
@@ -163,7 +166,7 @@ void RIOThreadContainer::IOCPThreadContainer::WorkerThread()
 
 		if (!iocp_result)
 		{
-			Static::PrintConsole(
+			RIOStatic::PrintConsole(
 				std::string("iocp result false error ") + std::to_string(WSAGetLastError()));
 			continue;
 		}
@@ -172,9 +175,9 @@ void RIOThreadContainer::IOCPThreadContainer::WorkerThread()
 			break;
 
 		std::unique_lock<std::mutex> lock(mutex_);
-		int result_size = Static::RIOFunc()->RIODequeueCompletion(rio_cq_, result,
-			Static::RIO_MAX_COMPLETION_QUEUE_SIZE);
-		Static::RIOFunc()->RIONotify(rio_cq_);
+		int result_size = RIOStatic::RIOFunc()->RIODequeueCompletion(rio_cq_, result,
+			completion_queue_size);
+		RIOStatic::RIOFunc()->RIONotify(rio_cq_);
 		lock.unlock();
 
 		DoIOCallBack(result, result_size);
@@ -187,18 +190,18 @@ RIO_RQ RIOThreadContainer::IOCPThreadContainer::BindSocket(const std::shared_ptr
 {
 	if (!IsRunning())
 	{
-		Static::PrintConsole("worker not running bind socket fail");
+		RIOStatic::PrintConsole("worker not running bind socket fail");
 		return RIO_INVALID_RQ;
 	}
 
 	std::unique_lock<std::mutex> lock(mutex_);
-	auto rq = Static::RIOFunc()->RIOCreateRequestQueue(socket->GetRawSocket(),
-		Static::RIO_MAX_OUTSTANDING_READ, 1, Static::RIO_MAX_OUTSTANDING_WRITE, 1,
+	auto rq = RIOStatic::RIOFunc()->RIOCreateRequestQueue(socket->GetRawSocket(),
+		RIOStatic::RIO_MAX_OUTSTANDING_READ, 1, RIOStatic::RIO_MAX_OUTSTANDING_WRITE, 1,
 		rio_cq_, rio_cq_, socket.get());
 	lock.unlock();
 
 	if (rq == RIO_INVALID_RQ)
-		Static::PrintConsole(std::string("rio create request queue fail error ") +
+		RIOStatic::PrintConsole(std::string("rio create request queue fail error ") +
 			std::to_string(WSAGetLastError()));
 
 	return rq;
@@ -220,25 +223,25 @@ void RIOThreadContainer::IOCPThreadContainer::Stop()
 			t.join();
 	}
 
-	Static::RIOFunc()->RIOCloseCompletionQueue(rio_cq_);
+	RIOStatic::RIOFunc()->RIOCloseCompletionQueue(rio_cq_);
 
 	delete overlapped_;
 }
 
-void RIOThreadContainer::StartPollingThread(int thread_count)
+void RIOThreadContainer::StartPollingThread(int thread_count, int max_conn)
 {
 	if (polling_container_.IsRunning())
 		return;
 
-	polling_container_.StartWorkerThread(thread_count);
+	polling_container_.StartWorkerThread(thread_count, max_conn);
 }
 
-void RIOThreadContainer::StartIOCPThread(int thread_count)
+void RIOThreadContainer::StartIOCPThread(int thread_count, int max_conn)
 {
 	if (iocp_container_.IsRunning())
 		return;
 
-	iocp_container_.StartWorkThread(thread_count);
+	iocp_container_.StartWorkThread(thread_count, max_conn);
 }
 
 void RIOThreadContainer::Stop()

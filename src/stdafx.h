@@ -21,3 +21,4 @@
 #include <streambuf>
 #include <string>
 #include <functional>
+#include <optional>

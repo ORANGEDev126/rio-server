@@ -10,6 +10,11 @@
 namespace network
 {
 
+RIOSocket::RIOSocket(std::function<std::optional<uint32_t>(std::istream&)> length_func)
+	: packet_length_func_(length_func)
+{
+}
+
 void RIOSocket::Initialize(SOCKET sock, SOCKADDR_IN addr, RIO_RQ queue,
 	const std::shared_ptr<RIOSocketContainer>& container)
 {
@@ -26,12 +31,11 @@ void RIOSocket::OnIOCallBack(int status, int transferred, RIOBuffer* buf)
 {
 	if (status)
 	{
-		Close(CLOSE_CALLBACK_STATUS_ERROR, std::string("error code ") + 
-		std::to_string(status));
+		Close("rio dequeue completion status error : " + std::to_string(status));
 	}
 	else if (transferred == 0)
 	{
-		Close(CLOSE_TRANSFERRED_SIZE_ZERO, "");
+		Close("rio transferred length zero");
 	}
 	else
 	{
@@ -51,18 +55,21 @@ void RIOSocket::OnReadCallBack(RIOBuffer* buf, int transferred)
 		RIOStreamBuffer stream_buf(read_buf_);
 		std::istream packet(&stream_buf);
 
-		auto packet_length = Static::GetProtoPacketSize(packet);
+		auto packet_length = packet_length_func_(packet);
 		auto curr_length = stream_buf.showmanyc();
-		if (packet_length == 0 || packet_length < curr_length)
+
+		if (!packet_length)
 			break;
 
-		if (packet_length > Static::PROTO_MAX_PACKET_LENGTH)
+		if (!ValidPacketLength(*packet_length))
 		{
-			Close(CLOSE_INVALID_PACKET_LENGTH, "");
-			return;
+			Close("invalid packet length");
 		}
 
-		auto left = curr_length - packet_length;
+		if (*packet_length < curr_length)
+			break;
+
+		auto left = curr_length - *packet_length;
 		buf->SetSize(static_cast<int>(buf->GetSize() - left));
 
 		OnRead(packet);
@@ -93,13 +100,12 @@ bool RIOSocket::WriteBuf(const std::shared_ptr<RIOBuffer>& buf)
 {
 	buf->PrepareWrite();
 
-	if (outstanding_write_ < Static::RIO_MAX_OUTSTANDING_WRITE)
+	if (outstanding_write_ < RIOStatic::RIO_MAX_OUTSTANDING_WRITE)
 	{
-		if (!Static::RIOFunc()->RIOSend(rio_req_queue_, buf.get(), 1, NULL, buf.get()) &&
+		if (!RIOStatic::RIOFunc()->RIOSend(rio_req_queue_, buf.get(), 1, NULL, buf.get()) &&
 			WSAGetLastError() != WSA_IO_PENDING)
 		{
-			Static::PrintConsole(std::string("rio send fail error ") +
-				std::to_string(WSAGetLastError()));
+			RIOStatic::PrintConsole(std::string("rio send fail error ") + WSAErrorToString());
 			return false;
 		}
 
@@ -109,8 +115,8 @@ bool RIOSocket::WriteBuf(const std::shared_ptr<RIOBuffer>& buf)
 	}
 	else
 	{
-		if (write_buf_.size() > Static::RIO_MAX_OUTSTANDING_WRITE &&
-			write_buf_.back()->GetSize() + buf->GetSize() <= Static::RIO_BUFFER_SIZE)
+		if (write_buf_.size() > RIOStatic::RIO_MAX_OUTSTANDING_WRITE &&
+			write_buf_.back()->GetSize() + buf->GetSize() <= RIOStatic::RIO_BUFFER_SIZE)
 		{
 			std::copy(buf->GetRawBuf(), buf->GetRawBuf() + buf->GetSize(),
 				write_buf_.back()->GetRawBuf());
@@ -134,13 +140,13 @@ void RIOSocket::OnWriteCallBack(RIOBuffer* buf, int transferred)
 	auto write_buf = PopFromWriteBuf(buf);
 	if (!write_buf)
 	{
-		Static::PrintConsole("write buf not match in write call back");
+		RIOStatic::PrintConsole("write buf not match in write call back");
 		throw std::logic_error("");
 	}
 
 	if (write_buf->GetSize() != transferred)
 	{
-		Static::PrintConsole("write buf transferred not matched");
+		RIOStatic::PrintConsole("write buf transferred not matched");
 		throw std::logic_error("");
 	}
 
@@ -152,12 +158,12 @@ void RIOSocket::OnWriteCallBack(RIOBuffer* buf, int transferred)
 
 	(*iter)->PrepareWrite();
 
-	if (!Static::RIOFunc()->RIOSend(rio_req_queue_, (*iter).get(), 1, NULL, (*iter).get()) &&
+	if (!RIOStatic::RIOFunc()->RIOSend(rio_req_queue_, (*iter).get(), 1, NULL, (*iter).get()) &&
 		WSAGetLastError() != WSA_IO_PENDING)
 	{
-		Static::PrintConsole(std::string("rio send fail in write call back error ") +
+		RIOStatic::PrintConsole(std::string("rio send fail in write call back error ") +
 			std::to_string(WSAGetLastError()));
-		Close(CLOSE_SEND_FAIL_IN_WRITECALLBACK, "");
+		Close("rio send fail on write call back error code " + WSAErrorToString());
 		return;
 	}
 
@@ -183,19 +189,19 @@ void RIOSocket::Read()
 	read_buf_.back()->PrepareRead();
 
 	std::lock_guard<std::mutex> lock(req_mutex_);
-	if (!Static::RIOFunc()->RIOReceive(rio_req_queue_, read_buf_.back().get(),
+	if (!RIOStatic::RIOFunc()->RIOReceive(rio_req_queue_, read_buf_.back().get(),
 		1, NULL, read_buf_.back().get()))
 	{
-		Static::PrintConsole(std::string("rio receive fail error ") +
+		RIOStatic::PrintConsole(std::string("rio receive fail error ") +
 			std::to_string(WSAGetLastError()));
-		Close(CLOSE_READ_FAIL, "");
+		Close("rio receive fail error code " + WSAErrorToString());
 		return;
 	}
 
 	self_container_.push_back(shared_from_this());
 }
 
-void RIOSocket::Close(CloseReason reason, std::string str)
+void RIOSocket::Close(std::string close_reason)
 {
 	auto before = rio_req_queue_.exchange(RIO_INVALID_RQ);
 	if (before != RIO_INVALID_RQ)
@@ -204,7 +210,7 @@ void RIOSocket::Close(CloseReason reason, std::string str)
 			container->DeleteSocket(shared_from_this());
 
 		closesocket(raw_sock_);
-		OnClose(reason, str);
+		OnClose(close_reason);
 	}
 }
 
@@ -242,5 +248,10 @@ std::shared_ptr<RIOBuffer> RIOSocket::PopFromWriteBuf(RIOBuffer* buf)
 	}
 
 	return nullptr;
+}
+
+std::string RIOSocket::WSAErrorToString() const
+{
+	return std::to_string(WSAGetLastError());
 }
 }

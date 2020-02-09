@@ -16,6 +16,7 @@ public:
 	class Slot
 	{
 	public:
+		~Slot();
 		RIOBuffer * Alloc();
 		void Free(RIOBuffer* buffer);
 
@@ -23,6 +24,8 @@ public:
 		std::list<RIOBuffer*> New();
 
 		std::list<RIOBuffer*> buf_;
+		std::vector<char*> alloc_page_;
+		std::vector<RIO_BUFFERID> alloc_buffer_id_;
 		std::mutex mutex_;
 	};
 
